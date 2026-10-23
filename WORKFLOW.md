@@ -65,6 +65,9 @@ Two containers, one compose project, both on the host network namespace. Nothing
     admin.ts                # dashboard shell (htmx + Alpine)
     fragments.ts            # invite and port fragments for htmx
     invite.ts               # CLI for passkey and access invites
+    passkey.ts              # CLI to list and remove registered passkeys
+    server.test.ts          # HTTP tests against a temporary database
+    store.test.ts           # invite, claim, session, and port tests
     assets/
       app.css               # built by Tailwind, do not edit by hand
       fonts.css             # Satoshi @font-face
@@ -331,6 +334,7 @@ What this setup does protect:
 - `next` is validated against `https://*.example.com`, so the login page cannot be used as an open redirect.
 - Admin routes require the owner session and a same-site origin on POST.
 - The auth and proxy listeners bind loopback only. There is no LAN exposure.
+- Auth pages send `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `Referrer-Policy: no-referrer`. Inline scripts run only when their SHA-256 hash matches, so an injected script does not execute. The dashboard also allows `'unsafe-eval'` because Alpine and htmx compile expressions at runtime.
 - Attestation verification requires the user verification flag, so a bare presence tap is not enough.
 
 What it does not protect against:
@@ -359,6 +363,10 @@ docker compose ps                 # status
 ```
 
 Caddy mounts the Caddyfile read-only, so a config edit needs `docker compose restart proxy`, not `up` alone.
+
+### Tests
+
+`cd auth && bun test` runs the HTTP and store tests against a temporary database on a spare port, so it never touches the live data. The suite covers the invite lifecycle, sessions, port scopes, the gate redirect, the security headers, and the rate limit. It needs the dependencies installed locally (`bun install`), not the running containers.
 
 ### Logs
 
@@ -538,6 +546,10 @@ Run these after any change.
 | Login page | `curl -s -o /dev/null -w "%{http_code}" https://auth.example.com/login` | `200` |
 | Passkey bundle | `curl -sI https://auth.example.com/assets/webauthn.js \| head -3` | `200`, `text/javascript` |
 | No CDN import | `curl -s https://auth.example.com/login \| grep -c esm.sh` | `0` |
+| Security headers | `curl -sD - -o /dev/null https://auth.example.com/login \| grep -i x-frame-options` | `x-frame-options: DENY` |
+| Malformed cookie | `curl -s -o /dev/null -w "%{http_code}" -H 'Cookie: ag_session=%' https://auth.example.com/login` | `200` |
+| Unit tests | `cd auth && bun test` | `16 pass, 0 fail` |
+| Containers healthy | `docker compose ps` | both `healthy` |
 | Gate redirect | `curl -s -o /dev/null -w "%{http_code} %{redirect_url}" https://p4323.example.com/` | `302` to `https://auth.example.com/login?next=...` |
 | Invalid host | `curl -s -o /dev/null -w "%{http_code}" https://asalan.example.com/` | `404` |
 | Edge filter active | `curl -sI https://asalan.example.com/ \| grep -i x-host-filter` | `x-host-filter: blocked` |
@@ -590,7 +602,7 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 - The dispatcher only serves HTTP. TCP services such as databases need separate tunnel rules.
 - The wildcard DNS record makes every `*.example.com` name resolve. The Worker blocks junk hosts at the edge and Caddy blocks them again, so no app is touched, but DNS still answers for names that serve nothing.
 - The Worker route covers subdomains only. The apex is allowed by the allowlist but not yet routed through the filter.
-- No compose healthcheck. A failed auth container shows up as 502 on the next request.
+- Compose healthchecks poll `/health` on auth and the proxy port. Docker marks a wedged container unhealthy but does not restart it on its own.
 - Revoking an access invite deletes its guest sessions immediately. Removing a passkey deletes owner sessions.
 - The backup tool is alpha. Keep an independent copy until it reaches beta.
 - The dashboard is one owner. There is no multi-user support or roles, and the audit table has no screen of its own.
