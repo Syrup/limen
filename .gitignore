@@ -10,7 +10,6 @@ backup/keys/
 
 # build inputs that are not source
 node_modules/
-admin-ui/package-lock.json
 
 # the gloak binary is built separately
 backup/bin/
