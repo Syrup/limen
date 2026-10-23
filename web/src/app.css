@@ -1,5 +1,5 @@
 @import "tailwindcss" source(none);
-@source "../auth/src";
+@source "../../auth/src";
 
 @theme {
   --font-sans: "Satoshi", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;

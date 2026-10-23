@@ -31,8 +31,7 @@ export function renderAdmin(lang: Lang): string {
 <meta name="theme-color" content="#0d0f0e">
 <title>${t("titles.admin")}</title>
 <link rel="stylesheet" href="/assets/app.css">
-<script defer src="/assets/htmx.min.js"></script>
-<script defer src="/assets/alpine.min.js"></script>
+<script defer src="/assets/vendor.js"></script>
 </head>
 <body class="min-h-screen bg-canvas font-sans text-ink antialiased">
 <div class="mx-auto w-full max-w-[1080px] px-6 py-10" x-data="dashboard()" @toast.window="notify($event.detail)">

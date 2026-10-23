@@ -1,4 +1,4 @@
-.PHONY: up down logs test test-auth test-worker typecheck build-css invite backup restore-drill config
+.PHONY: up down logs test test-auth test-worker typecheck assets web-install invite backup restore-drill config
 
 # Start everything and rebuild the auth image.
 up:
@@ -22,9 +22,12 @@ test-worker:
 typecheck:
 	cd auth && bun run typecheck
 
-# Rebuild the dashboard stylesheet into auth/assets/app.css.
-build-css:
-	cd admin-ui && npm run build
+# Rebuild the dashboard assets into auth/assets.
+assets:
+	cd web && npm run build
+
+web-install:
+	cd web && npm ci
 
 invite:
 	docker compose exec auth bun run src/invite.ts

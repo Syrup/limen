@@ -11,6 +11,12 @@ backup/keys/
 # build inputs that are not source
 node_modules/
 
+# built by web/ into auth/assets
+auth/assets/*.min.js
+auth/assets/app.css
+auth/assets/vendor.js
+auth/assets/webauthn.js
+
 # the gloak binary is built separately
 backup/bin/
 

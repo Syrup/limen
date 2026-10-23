@@ -119,19 +119,23 @@ docker compose up -d --build
       server.test.ts        # HTTP tests against a temporary database
       store.test.ts         # invite, claim, session, and port tests
     assets/
-      app.css               # built by Tailwind, do not edit by hand
+      app.css               # built by web/, do not edit by hand
+      vendor.js             # htmx and Alpine in one bundle
+      webauthn.js           # browser passkey library
       fonts.css             # Satoshi @font-face
       fonts/                # Satoshi variable WOFF2 and its license
-      htmx.min.js           # vendored htmx 2.0.4
-      alpine.min.js         # vendored Alpine 3.14
     data/
       auth.db               # SQLite: passkeys, invites, sessions, ports, audit
       invite-secret         # HMAC key for invite links (mode 600)
       legacy/               # JSON files moved here after the one-time import
-  admin-ui/
-    input.css               # Tailwind entry and theme tokens
-    package.json            # build script, output goes to auth/assets/app.css
-    package-lock.json       # pinned Tailwind version
+  web/
+    vite.config.ts          # entries, output to auth/assets with fixed names
+    src/
+      app.css               # Tailwind entry and theme tokens
+      vendor.ts             # htmx + Alpine, started once
+      webauthn.ts           # re-exports used by the login pages
+    package.json            # build and watch scripts
+    package-lock.json       # pinned Vite and Tailwind
   backup/
     bin/gloak               # local build of gloak, not committed (see backup/env)
     snapshot.ts             # VACUUM INTO plus integrity check
@@ -227,14 +231,15 @@ Access invite:
 - Every admin route checks the owner session and, for POST, the request origin.
 - `ADMIN_DEV_OPEN=1` with `NODE_ENV` other than `production` bypasses the owner check for local UI testing. Production images set `NODE_ENV=production`, so the bypass is inert.
 
-The dashboard CSS is built from `admin-ui/input.css`:
+The dashboard bundle is built by `web/`:
 
 ```bash
-cd ~/.config/limen/admin-ui
+cd ~/.config/limen/web
+npm ci
 npm run build
 ```
 
-That writes `auth/assets/app.css`. Rebuild and restart the auth container after changing classes.
+That writes `auth/assets/app.css`, `vendor.js`, and `webauthn.js`. Rebuild and restart the auth container after changing styles or scripts.
 
 ### Port filter
 
@@ -460,16 +465,14 @@ journalctl --user -u cloudflared -n 100 --no-pager
 
 Open `https://auth.example.com/admin` with an owner session. The page is server-rendered by `admin.ts` and loads fragments from `/fragments/*` through htmx. Alpine handles the type and scope toggles, copy feedback, two-step revoke and delete, and toasts.
 
-The dashboard CSS is a Tailwind build, not hand-written CSS. After changing classes:
+The dashboard stylesheet and the JS bundle come from `web/`, not from hand-written files. After changing classes or scripts:
 
 ```bash
-cd ~/.config/limen/admin-ui
-npm run build
-cd ..
+make assets
 docker compose up -d --build auth
 ```
 
-The build needs `admin-ui/node_modules`, which is not copied into the image. Only `auth/assets/app.css` ships.
+`web/node_modules` stays out of the runtime image. The Dockerfile builds the bundle in a Node stage and copies only the output.
 
 ### Add a passkey
 
@@ -686,7 +689,7 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 - Revoking an access invite deletes its guest sessions immediately. Removing a passkey deletes owner sessions.
 - The backup tool is alpha. Keep an independent copy until it reaches beta.
 - The dashboard is one owner. There is no multi-user support or roles, and the audit table has no screen of its own.
-- `admin-ui` needs Node to rebuild the Tailwind CSS. The runtime does not.
+- `web/` needs Node to rebuild the assets. The runtime image does not.
 - `ADMIN_DEV_OPEN` exists for local UI testing and is inert in production. Do not set `NODE_ENV` to anything other than `production` in the deployed image.
 
 ## Design notes

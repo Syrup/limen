@@ -1,4 +1,0 @@
-# Runtime state and local installs stay out of the build context.
-# auth/data holds the database, session state, and the invite signing secret.
-node_modules
-data

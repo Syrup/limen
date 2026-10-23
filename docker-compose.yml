@@ -33,7 +33,9 @@ services:
     mem_limit: 64m
 
   auth:
-    build: ./auth
+    build:
+      context: .
+      dockerfile: auth/Dockerfile
     image: limen-core:latest
     container_name: limen-core
     restart: unless-stopped

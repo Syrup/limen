@@ -40,7 +40,8 @@ Add a test for anything that changes behaviour. The invite lifecycle, session sc
 |---|---|
 | `auth/src` | the Bun service: routes, store, UI, config, locales |
 | `auth/test` | tests, run with `bun test` |
-| `auth/assets` | fonts, vendored JS, and the stylesheet built by `admin-ui` |
+| `auth/assets` | fonts, plus the CSS and JS bundle built by `web/` |
+| `web` | Vite build for Tailwind, htmx, Alpine, and the WebAuthn browser library |
 | `proxy` | Caddyfile and the error pages |
 | `worker` | Cloudflare edge host filter |
 | `backup` | snapshot and restore scripts, systemd units |

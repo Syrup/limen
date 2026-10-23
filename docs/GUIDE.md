@@ -333,7 +333,7 @@ Passkeys are bound to the domain they were created on. Changing `example.com` to
 | Stop everything | `cd ~/.config/limen && docker compose down` |
 | Restart auth only | `docker compose restart auth` |
 | Rebuild auth after code change | `docker compose up -d --build auth` |
-| Rebuild dashboard CSS | `cd admin-ui && npm run build` |
+| Rebuild dashboard assets | `make web-install && make assets` |
 | Show auth logs | `docker compose logs -f auth` |
 | Show proxy logs | `docker compose logs -f proxy` |
 | Create passkey link | `docker compose exec auth bun run invite.ts` |

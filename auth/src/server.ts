@@ -230,7 +230,7 @@ function contentSecurityPolicy(body: string): string {
   const scripts = ["'self'", ...inlineScriptHashes(body)];
   // Alpine and htmx compile expressions with new Function(), so the dashboard
   // needs 'unsafe-eval'. The login pages have no such dependency.
-  if (body.includes('src="/assets/alpine.min.js"') || body.includes('src="/assets/htmx.min.js"')) {
+  if (body.includes('src="/assets/vendor.js"')) {
     scripts.push("'unsafe-eval'");
   }
   return [
