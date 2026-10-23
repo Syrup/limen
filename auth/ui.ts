@@ -132,6 +132,7 @@ export const UI = {
       success: "Berhasil. Mengalihkan...",
       registered: "Passkey terdaftar. Mengalihkan ke halaman masuk...",
       unsupported: "Browser ini tidak mendukung passkey.",
+      lib: "Pustaka passkey gagal dimuat. Muat ulang halaman ini.",
       canceled: "Permintaan dibatalkan atau waktu habis. Coba lagi.",
       security: "Alamat ini tidak cocok dengan passkey yang terdaftar.",
       already: "Passkey ini sudah terdaftar di perangkat.",
@@ -286,6 +287,7 @@ export const UI = {
       success: "Success. Redirecting...",
       registered: "Passkey registered. Redirecting to sign in...",
       unsupported: "This browser does not support passkeys.",
+      lib: "The passkey library failed to load. Reload this page.",
       canceled: "The request was cancelled or timed out. Try again.",
       security: "This address does not match the registered passkey.",
       already: "This passkey is already registered on the device.",
@@ -458,7 +460,6 @@ ${script ? `<script type="module">${script}</script>` : ""}
 
 function loginScript(lang: Lang): string {
   return `
-import { startAuthentication } from "https://esm.sh/@simplewebauthn/browser@14";
 const T = ${JSON.stringify(UI[lang].client)};
 const btn = document.getElementById("btn");
 const status = document.getElementById("status");
@@ -470,6 +471,14 @@ try { target.textContent = new URL(next, location.origin).host; } catch {}
 function setStatus(text, kind) {
   status.textContent = text;
   status.className = "status" + (kind ? " " + kind : "");
+}
+
+async function loadWebauthn() {
+  try {
+    return await import("/assets/webauthn.js");
+  } catch {
+    throw new Error(T.lib);
+  }
 }
 
 function pesan(e) {
@@ -489,6 +498,7 @@ if (!window.PublicKeyCredential) {
     btn.setAttribute("aria-busy", "true");
     setStatus(T.preparing);
     try {
+      const { startAuthentication } = await loadWebauthn();
       const optRes = await fetch("/api/webauthn/login/options", { method: "POST" });
       if (!optRes.ok) {
         const d = await optRes.json().catch(() => null);
@@ -519,7 +529,6 @@ if (!window.PublicKeyCredential) {
 
 function registerScript(lang: Lang): string {
   return `
-import { startRegistration } from "https://esm.sh/@simplewebauthn/browser@14";
 const T = ${JSON.stringify(UI[lang].client)};
 const btn = document.getElementById("btn");
 const status = document.getElementById("status");
@@ -528,6 +537,14 @@ const token = new URLSearchParams(location.search).get("token") || "";
 function setStatus(text, kind) {
   status.textContent = text;
   status.className = "status" + (kind ? " " + kind : "");
+}
+
+async function loadWebauthn() {
+  try {
+    return await import("/assets/webauthn.js");
+  } catch {
+    throw new Error(T.lib);
+  }
 }
 
 function pesan(e) {
@@ -548,6 +565,7 @@ if (!window.PublicKeyCredential) {
     btn.setAttribute("aria-busy", "true");
     setStatus(T.preparing);
     try {
+      const { startRegistration } = await loadWebauthn();
       const optRes = await fetch("/api/webauthn/register/options?token=" + encodeURIComponent(token), { method: "POST" });
       if (!optRes.ok) {
         const d = await optRes.json().catch(() => null);
