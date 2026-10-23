@@ -128,7 +128,6 @@ limen/
     data/
       auth.db               # SQLite: passkeys, invites, sessions, ports, audit
       invite-secret         # HMAC key for invite links (mode 600)
-      legacy/               # JSON files moved here after the one-time import
   web/
     vite.config.ts          # entries, output to auth/assets with fixed names
     src/
@@ -530,8 +529,6 @@ WHERE id = ? AND revoked_at IS NULL AND expires_at > ?
 ```
 
 Passkey registration uses a short claim (`claim_id`, 5 minute expiry) so two concurrent verifies cannot both consume a single-use invite. Sessions store `SHA-256(token)`, never the raw cookie value. Backups use `VACUUM INTO`, not a file copy, so WAL is checkpointed into a consistent snapshot.
-
-The one-time migration imports the old JSON files and moves them to `auth/data/legacy/`. Keep that folder until you have verified the database.
 
 ### Backup and restore
 

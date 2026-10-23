@@ -1,14 +1,11 @@
 import { Database } from "bun:sqlite";
 import { randomBytes, createHmac, timingSafeEqual, createHash } from "node:crypto";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync, renameSync } from "node:fs";
-import { join, basename } from "node:path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from "node:fs";
+import { join } from "node:path";
 
 export const DATA_DIR = process.env.AUTH_DATA_DIR || join(import.meta.dir, "..", "data");
 const DB_PATH = process.env.AUTH_DB_PATH || join(DATA_DIR, "auth.db");
 const SECRET_FILE = join(DATA_DIR, "invite-secret");
-const LEGACY_CREDS = join(DATA_DIR, "credentials.json");
-const LEGACY_INVITES = join(DATA_DIR, "invites.json");
-const LEGACY_PORTS = join(DATA_DIR, "ports.json");
 
 mkdirSync(DATA_DIR, { recursive: true });
 try { chmodSync(DATA_DIR, 0o700); } catch {}
@@ -389,72 +386,3 @@ export function listAudit(limit = 50): Array<{ at: number; actor: string; action
 export function pruneAudit(before: number): void {
   db.query("DELETE FROM audit_log WHERE at < ?").run(before);
 }
-
-function migrateLegacy(): void {
-  const credsCount = (db.query("SELECT COUNT(*) AS n FROM credentials").get() as any).n;
-  if (credsCount === 0 && existsSync(LEGACY_CREDS)) {
-    try {
-      const data = JSON.parse(readFileSync(LEGACY_CREDS, "utf8"));
-      if (Array.isArray(data)) {
-        for (const c of data) {
-          if (c && typeof c.id === "string") addCredential({
-            id: c.id,
-            publicKey: c.publicKey,
-            counter: c.counter ?? 0,
-            transports: c.transports,
-            createdAt: c.createdAt ?? new Date().toISOString(),
-          });
-        }
-      }
-      moveLegacy(LEGACY_CREDS);
-    } catch { /* leave the file for manual inspection */ }
-  }
-
-  const invitesCount = (db.query("SELECT COUNT(*) AS n FROM invites").get() as any).n;
-  if (invitesCount === 0 && existsSync(LEGACY_INVITES)) {
-    try {
-      const data = JSON.parse(readFileSync(LEGACY_INVITES, "utf8"));
-      if (Array.isArray(data)) {
-        for (const i of data) {
-          if (!i || typeof i.id !== "string" || (i.type !== "access" && i.type !== "passkey")) continue;
-          const created = Date.parse(i.createdAt) || Date.now();
-          const expires = Date.parse(i.expiresAt) || Date.now();
-          db.query(`INSERT OR IGNORE INTO invites (id, type, label, scope, max_uses, uses, created_at, expires_at, revoked_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run(
-              i.id, i.type, i.label ?? "",
-              i.scope === "all" ? "all" : JSON.stringify(i.scope ?? []),
-              i.maxUses ?? (i.type === "passkey" ? 1 : null),
-              i.uses ?? 0, created, expires,
-              i.revokedAt ? Date.parse(i.revokedAt) : null,
-            );
-        }
-      }
-      moveLegacy(LEGACY_INVITES);
-    } catch { /* leave the file for manual inspection */ }
-  }
-
-  const portsCount = (db.query("SELECT COUNT(*) AS n FROM blocked_ports").get() as any).n;
-  if (portsCount === 0 && existsSync(LEGACY_PORTS)) {
-    try {
-      const data = JSON.parse(readFileSync(LEGACY_PORTS, "utf8"));
-      const blocked = Array.isArray(data?.blocked) ? data.blocked : [];
-      for (const port of blocked) {
-        if (Number.isInteger(port) && port > 0 && port <= 65535) setPortBlocked(port, true);
-      }
-      moveLegacy(LEGACY_PORTS);
-    } catch { /* leave the file for manual inspection */ }
-  }
-}
-
-function moveLegacy(path: string): void {
-  const dir = join(DATA_DIR, "legacy");
-  mkdirSync(dir, { recursive: true });
-  try {
-    const dest = join(dir, basename(path));
-    renameSync(path, dest);
-    chmodSync(dest, 0o600);
-  } catch {}
-}
-
-migrateLegacy();
