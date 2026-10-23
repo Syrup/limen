@@ -23,10 +23,13 @@
 		}
 	}
 
-	# Harus berupa handle terpisah: forward_auth diurutkan sebelum respond,
-	# jadi host tidak valid akan kena gate login kalau digabung.
+	# This has to be its own handle block. Caddy sorts forward_auth ahead of
+	# respond inside one branch, so combining them sends junk hosts to the login
+	# gate and returns 302 instead of 404.
 	@invalid vars {target_port} none
 	handle @invalid {
+		@en header_regexp Accept-Language (?i)^\s*en
+		respond @en "Invalid subdomain. Format: https://p<port>.{$LIMEN_DOMAIN}" 404
 		respond "Subdomain tidak valid. Format: https://p<port>.{$LIMEN_DOMAIN}" 404
 	}
 
@@ -50,8 +53,8 @@
 			templates {
 				root /srv/errors
 			}
-			# 503, bukan 502: Cloudflare mengganti body 502 dari origin dengan
-			# halaman bawaannya sendiri. Status 503 diteruskan apa adanya.
+			# 503 instead of 502: Cloudflare replaces a 502 body with its own page,
+			# while a 503 body passes through unchanged.
 			respond @en "{{include \"502.en.html\"}}" 503
 			respond "{{include \"502.html\"}}" 503
 		}

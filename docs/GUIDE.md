@@ -46,7 +46,7 @@ The address is `https://p` followed by the port number, then `.example.com`.
 
 Port must be 2 to 5 digits. The number cannot start with 0, so `p04323` and `p00` are rejected. Addresses like `https://4323.example.com` or `https://p.example.com` do not work either. You will get a 404 with a short explanation, and the app behind the port never receives the request.
 
-Two kinds of 404 exist. A page saying `Not found` comes from Cloudflare, which rejects the address before it reaches the server. A page saying `Subdomain tidak valid` comes from the server itself. Both mean the address is wrong.
+Two kinds of 404 exist. A page saying `Not found` comes from Cloudflare, which rejects the address before it reaches the server. A page saying `Subdomain tidak valid`, or `Invalid subdomain` in an English browser, comes from the server itself. Both mean the address is wrong.
 
 ### Logging out
 
@@ -243,7 +243,7 @@ docker compose logs --tail=50 auth
 docker compose up -d auth
 ```
 
-### 404 with "Subdomain tidak valid"
+### 404 with "Subdomain tidak valid" / "Invalid subdomain"
 
 The address does not follow the pattern. Use `p` plus the port, for example `https://p4323.example.com`. Do not use two levels like `4323.p.example.com`, and do not drop the `p`.
 

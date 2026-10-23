@@ -284,6 +284,8 @@ The domain scope is what makes one login cover every port. The trade-off is that
 
     @invalid vars {target_port} none
     handle @invalid {
+        @en header_regexp Accept-Language (?i)^\s*en
+        respond @en "Invalid subdomain..." 404
         respond "Subdomain tidak valid..." 404
     }
 
@@ -638,7 +640,7 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 |---|---|---|---|
 | `503` from the proxy with a custom page | Backend not listening | Page shows the port, `ss -tln \| grep ':<port>'` | Start the app, or correct the port |
 | `502` on auth host too | Auth container down or crashed | `docker compose logs --tail=50 auth` | Fix the error, `docker compose up -d auth` |
-| `404 Subdomain tidak valid` | Host does not match `^p[1-9][0-9]{0,4}\.example\.com$` | Compare the URL | Use `p<port>.example.com`, one level deep |
+| `404 Subdomain tidak valid` or `Invalid subdomain` | Host does not match `^p[1-9][0-9]{0,4}\.example\.com$` | Compare the URL | Use `p<port>.example.com`, one level deep |
 | `403 Port ini tidak tersedia` | Port is blocked in the dashboard | `docker compose exec auth bun -e '...'` or check the dashboard | Toggle it back on in the `Port` panel |
 | `403 Port ini di luar aksesmu` | Guest scope does not cover the port | Check the invite scope in the dashboard | Create a link with the right ports |
 | `404` on `/fragments/*` | No owner session, or the session expired | Cookie `ag_session` missing | Sign in again, then reload the dashboard |
