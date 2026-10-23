@@ -84,3 +84,22 @@ test("blocked ports survive a read and can be turned back on", () => {
   store.setPortBlocked(9999, false);
   expect(store.loadBlockedPorts().has(9999)).toBe(false);
 });
+
+test("guest sessions for one invite are trimmed to the newest ones", () => {
+  const invite = store.createInvite({ type: "access", label: "", durationMs: 3_600_000, scope: "all" });
+  for (let i = 0; i < 25; i += 1) {
+    store.createSession("guest", "all", Date.now() + 600_000, invite.id);
+  }
+
+  store.trimInviteSessions(invite.id, 20);
+  expect(store.listSessions().filter((s) => s.inviteId === invite.id).length).toBe(20);
+});
+
+test("audit pruning only drops rows older than the cutoff", () => {
+  store.addAudit({ actor: "owner", action: "test_old" });
+  store.pruneAudit(Date.now() - 60_000);
+  expect(store.listAudit(100).some((row) => row.action === "test_old")).toBe(true);
+
+  store.pruneAudit(Date.now() + 1_000);
+  expect(store.listAudit(100).length).toBe(0);
+});

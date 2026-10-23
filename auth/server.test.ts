@@ -78,7 +78,7 @@ test("a guest session only passes the ports in its scope", async () => {
 
   const redeem = await fetch(`${base}/access?token=${encodeURIComponent(token)}`, { redirect: "manual" });
   expect(redeem.status).toBe(302);
-  const cookie = (redeem.headers.get("set-cookie") || "").split(";")[0];
+  const cookie = (redeem.headers.get("set-cookie") || "").split(";")[0] ?? "";
   expect(cookie).toContain("ag_access=");
 
   expect((await fetch(`${base}/verify`, { headers: { "x-port": "5001", cookie } })).status).toBe(200);
@@ -94,6 +94,60 @@ test("a blocked port is refused even for the owner", async () => {
   });
   expect(res.status).toBe(403);
   expect(await res.text()).toContain("Port ini tidak tersedia");
+});
+
+test("opening an access link again in the same browser reuses the session", async () => {
+  const invite = store.createInvite({ type: "access", label: "reuse", durationMs: 3_600_000, scope: "all" });
+  const url = `${base}/access?token=${encodeURIComponent(store.inviteToken(invite))}`;
+
+  const first = await fetch(url, { redirect: "manual" });
+  expect(first.status).toBe(302);
+  const cookie = (first.headers.get("set-cookie") || "").split(";")[0] ?? "";
+  const before = store.listSessions().filter((s) => s.inviteId === invite.id).length;
+
+  const again = await fetch(url, { redirect: "manual", headers: { cookie } });
+  expect(again.status).toBe(302);
+  expect(again.headers.get("set-cookie")).toBeNull();
+  expect(store.listSessions().filter((s) => s.inviteId === invite.id).length).toBe(before);
+});
+
+test("one access link cannot grow the session table without bound", async () => {
+  const invite = store.createInvite({ type: "access", label: "cap", durationMs: 3_600_000, scope: "all" });
+  const url = `${base}/access?token=${encodeURIComponent(store.inviteToken(invite))}`;
+
+  for (let i = 0; i < 22; i += 1) {
+    const res = await fetch(url, { redirect: "manual" });
+    expect(res.status).toBe(302);
+  }
+
+  expect(store.listSessions().filter((s) => s.inviteId === invite.id).length).toBe(20);
+});
+
+test("admin writes only accept the auth origin", async () => {
+  const token = store.createSession("owner", "all", Date.now() + 60_000);
+  const body = new URLSearchParams({ type: "access", amount: "1", unit: "hours", scope: "all", label: "csrf" });
+  const form = { "content-type": "application/x-www-form-urlencoded" };
+
+  const foreign = await fetch(`${base}/admin/invites`, {
+    method: "POST",
+    headers: { ...form, cookie: `ag_session=${token}`, origin: "https://p4323.example.com" },
+    body,
+  });
+  expect(foreign.status).toBe(403);
+
+  const own = await fetch(`${base}/admin/invites`, {
+    method: "POST",
+    headers: { ...form, cookie: `ag_session=${token}`, origin: "https://auth.example.com" },
+    body,
+  });
+  expect(own.status).toBe(200);
+
+  const cli = await fetch(`${base}/admin/invites`, {
+    method: "POST",
+    headers: { ...form, cookie: `ag_session=${token}` },
+    body,
+  });
+  expect(cli.status).toBe(200);
 });
 
 test("the API rate limit kicks in after 60 requests", async () => {
