@@ -368,6 +368,18 @@ docker compose ps                 # status
 
 Caddy mounts the Caddyfile read-only, so a config edit needs `docker compose restart proxy`, not `up` alone.
 
+### Image pinning
+
+Both base images are pinned by digest, in `auth/Dockerfile` and `docker-compose.yml`. To move to a newer base, bump the tag and the digest together:
+
+```bash
+docker pull oven/bun:1-slim
+docker inspect --format '{{index .RepoDigests 0}}' oven/bun:1-slim
+docker inspect --format '{{index .RepoDigests 0}}' caddy:2.11.4-alpine
+```
+
+A digest belongs to one architecture. Moving the stack to an arm host means new digests for both images.
+
 ### Tests
 
 `cd auth && bun test` runs the HTTP and store tests against a temporary database on a spare port, so it never touches the live data. The suite covers the invite lifecycle, sessions, port scopes, the gate redirect, the security headers, and the rate limit. It needs the dependencies installed locally (`bun install`), not the running containers.
