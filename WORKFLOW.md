@@ -116,7 +116,7 @@ docker compose up -d --build
     input.css               # Tailwind entry and theme tokens
     package.json            # build script
   backup/
-    bin/gloak               # binary built from the local gloak source
+    bin/gloak               # local build of gloak, not committed (see backup/env)
     snapshot.ts             # VACUUM INTO plus integrity check
     verify-db.ts            # integrity check and table counts
     backup.sh               # snapshot, upload, check, verify, prune

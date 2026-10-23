@@ -12,5 +12,8 @@ backup/keys/
 node_modules/
 admin-ui/package-lock.json
 
+# the gloak binary is built separately
+backup/bin/
+
 # tooling caches
 worker/.wrangler/
