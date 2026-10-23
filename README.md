@@ -47,6 +47,8 @@ Passkey invites work the other way: one credential for one device, and that devi
 
 ## Quick start
 
+The Cloudflare side (tunnel, wildcard DNS, edge Worker) is a one time setup. Follow [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md) first.
+
 ```bash
 git clone <repo> limen
 cd limen
@@ -96,6 +98,7 @@ Built for a single owner on one host. There is no multi-user store, no session l
 ## Docs
 
 - [docs/GUIDE.md](docs/GUIDE.md): day to day use, written for someone who just wants to open a dev server.
+- [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md): tunnel, DNS, Worker deployment with Wrangler, and the R2 backup bucket.
 - [docs/WORKFLOW.md](docs/WORKFLOW.md): request path, security properties, operations, backup and restore, failure modes.
 - [worker/README.md](worker/README.md): deploying and rolling back the edge filter.
 - [CONTRIBUTING.md](CONTRIBUTING.md): setup, tests, layout, and [adding a language](CONTRIBUTING.md#adding-a-language).

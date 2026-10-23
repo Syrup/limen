@@ -89,6 +89,7 @@ docker compose up -d --build
   docker-compose.yml        # proxy + auth services
   docs/
     GUIDE.md                # day to day guide, no internals
+    CLOUDFLARE.md           # tunnel, DNS, Worker, and R2 setup
     WORKFLOW.md             # this file
   proxy/
     Caddyfile               # dispatcher rules, mounted read-only
@@ -334,6 +335,8 @@ Notes on the choices:
 
 ## Cloudflare and DNS
 
+The full walkthrough, from installing `cloudflared` to deploying the Worker and creating the R2 bucket, is in [CLOUDFLARE.md](CLOUDFLARE.md).
+
 - Zone `example.com` is on Cloudflare nameservers.
 - A proxied CNAME `*.example.com` points to `<tunnel-id>.cfargotunnel.com`.
 - The tunnel config at `~/.cloudflared/config.yml` lists an ingress rule `*.example.com -> http://127.0.0.1:8088` before the `http_status:404` catch-all. Specific hostnames such as a separate SSH host stay on their own rules.
@@ -487,7 +490,7 @@ Open the printed URL on the target device. The default lifetime is 15 minutes an
 
 ### Create a temporary access link
 
-From the dashboard, create an `Akses sementara` invite with a duration and a scope. From the shell:
+From the dashboard, create a `Temporary access` invite with a duration and a scope. From the shell:
 
 ```bash
 docker compose exec auth bun run invite.ts --type access --duration 2 --unit hours --scope 4322,4323
@@ -497,7 +500,7 @@ docker compose exec auth bun run invite.ts --type access --duration 2 --unit hou
 
 ### Revoke an access invite
 
-Use the `Cabut` button in the dashboard. Revoking marks the invite dead and deletes guest sessions issued from it, so access ends immediately rather than at expiry. Expired invites can be deleted with `Hapus`.
+Use the `Revoke` button in the dashboard. Revoking marks the invite dead and deletes guest sessions issued from it, so access ends immediately rather than at expiry. Expired invites can be deleted with `Delete`.
 
 ### Revoke a passkey
 
@@ -653,9 +656,9 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 |---|---|---|---|
 | `503` from the proxy with a custom page | Backend not listening | Page shows the port, `ss -tln \| grep ':<port>'` | Start the app, or correct the port |
 | `502` on auth host too | Auth container down or crashed | `docker compose logs --tail=50 auth` | Fix the error, `docker compose up -d auth` |
-| `404 Subdomain tidak valid` or `Invalid subdomain` | Host does not match `^p[1-9][0-9]{0,4}\.example\.com$` | Compare the URL | Use `p<port>.example.com`, one level deep |
-| `403 Port ini tidak tersedia` | Port is blocked in the dashboard | `docker compose exec auth bun -e '...'` or check the dashboard | Toggle it back on in the `Port` panel |
-| `403 Port ini di luar aksesmu` | Guest scope does not cover the port | Check the invite scope in the dashboard | Create a link with the right ports |
+| `404 Invalid subdomain` (Indonesian: `Subdomain tidak valid`) | Host does not match `^p[1-9][0-9]{0,4}\.example\.com$` | Compare the URL | Use `p<port>.example.com`, one level deep |
+| `403 Port unavailable` (Indonesian: `Port ini tidak tersedia`) | Port is blocked in the dashboard | `docker compose exec auth bun -e '...'` or check the dashboard | Toggle it back on in the `Port` panel |
+| `403 Port outside your access` (Indonesian: `Port ini di luar aksesmu`) | Guest scope does not cover the port | Check the invite scope in the dashboard | Create a link with the right ports |
 | `404` on `/fragments/*` | No owner session, or the session expired | Cookie `ag_session` missing | Sign in again, then reload the dashboard |
 | Login loops | Cookie rejected | Browser devtools, Application, Cookies | Use `https`, allow cookies, clear site data |
 | Redirect lands on `http://` | `X-Forwarded-Proto` from cloudflared is `http` | Inspect `Location` header | `reconstructNextUrl` forces `https`; keep it that way |
