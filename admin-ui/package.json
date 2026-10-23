@@ -1,6 +1,7 @@
 {
   "name": "limen-admin-ui",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "build": "tailwindcss -i input.css -o ../auth/assets/app.css --minify"
   },

@@ -104,7 +104,7 @@ A port that is not currently listening still appears if you blocked it, so the b
 
 ## Backup
 
-Offsite backup uses gloak, a separate tool you build from its own source. The script snapshots SQLite with `VACUUM INTO`, uploads it, checks it, verifies every chunk, and prunes old snapshots. A restore drill is available separately. The binary is not part of this repo: put it where `GLOAK_BIN` in `backup/env` points, for example `backup/bin/gloak`.
+Offsite backup uses [gloak](https://github.com/StackNadi/gloak), a separate tool you build from its own Go source. The script snapshots SQLite with `VACUUM INTO`, uploads it, checks it, verifies every chunk, and prunes old snapshots. A restore drill is available separately. The binary is not part of this repo: put it where `GLOAK_BIN` in `backup/env` points, for example `backup/bin/gloak`.
 
 One-time setup:
 

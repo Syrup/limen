@@ -81,6 +81,8 @@ docker compose up -d --build
   .gitignore                # keeps runtime state, secrets, and keys out of git
   .env.example              # template for deployment values
   .env                      # local values, gitignored
+  README.md                 # what it is, quick start, where to read next
+  LICENSE                   # MIT
   docker-compose.yml        # proxy + auth services
   Caddyfile                 # dispatcher rules, mounted read-only
   GUIDE.md                  # non-technical guide
@@ -504,7 +506,7 @@ The one-time migration imports the old JSON files and moves them to `auth/data/l
 
 ### Backup and restore
 
-Backups run through gloak from the local source tree. The pipeline is `VACUUM INTO` -> staging -> `gloak backup` -> `check` -> `verify` -> `prune`. A restore drill restores the newest snapshot and runs `PRAGMA integrity_check`.
+Backups run through [gloak](https://github.com/StackNadi/gloak), built from its own source. The pipeline is `VACUUM INTO` -> staging -> `gloak backup` -> `check` -> `verify` -> `prune`. A restore drill restores the newest snapshot and runs `PRAGMA integrity_check`.
 
 Configuration lives in `backup/env` (mode 600, based on `backup/env.example`). Required values are `GLOAK_REMOTE`, `GLOAK_DIR`, `GLOAK_BIN`, `BUN_BIN`, `COMPOSE_DIR`, and `DB_PATH`. The remote is an rclone path such as `r2:limen-backup`.
 
@@ -526,7 +528,7 @@ For Cloudflare R2 with a bucket-scoped token, the rclone remote needs `no_check_
 rclone config update r2 no_check_bucket true
 ```
 
-Two R2 compatibility fixes live in the local gloak source and in the binary under `backup/bin`:
+Two R2 compatibility fixes live in gloak itself:
 
 - `isFileMode` validates a non-empty locator JSON. Rclone on R2 returns success with an empty body for a missing object, which previously made repo snapshots look like standalone file backups.
 - `repo.Init` requires a non-empty `repo.json` before refusing to overwrite. The same empty-body behavior made a fresh bucket look initialized.
@@ -677,7 +679,7 @@ Typography is Satoshi, self-hosted as one 42 KB variable WOFF2. It is used on th
 
 JSON files were the first store. They worked for one user, but read-modify-write lost updates under concurrent requests and a crash mid-write could corrupt a file. SQLite replaced them with WAL, transactions, and a single conditional update for invite consumption. Sessions moved into the database so a restart no longer signs everyone out.
 
-gloak is the offsite layer because it is already being developed here, it encrypts before upload, and its repository mode gives deduplication, snapshots, retention, and verification. It is alpha, so the backup keeps an independent second copy until the format and locking settle.
+gloak is the offsite layer because it is a companion project, it encrypts before upload, and its repository mode gives deduplication, snapshots, retention, and verification. It is alpha, so the backup keeps an independent second copy until the format and locking settle.
 
 Two containers beat one. Bundling Caddy and Bun into a single image would need a supervisor, mix logs, and make a single-service restart impossible. The compose file gives one command with two independent lifecycles at roughly 38 MB of RAM total.
 
