@@ -11,8 +11,8 @@ process.env.LIMEN_DOMAIN = "limen.test";
 process.env.LIMEN_AUTH_HOST = "auth.limen.test";
 process.env.LIMEN_TZ = "UTC";
 
-const { server } = await import("./server.ts");
-const store = await import("./store.ts");
+const { server } = await import("../src/server.ts");
+const store = await import("../src/store.ts");
 const base = `http://127.0.0.1:${server.port}`;
 
 afterAll(() => server.stop(true));

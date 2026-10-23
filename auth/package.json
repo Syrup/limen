@@ -5,9 +5,10 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "start": "bun run server.ts",
-    "dev": "bun --watch run server.ts",
-    "test": "bun test"
+    "start": "bun run src/server.ts",
+    "dev": "bun --watch run src/server.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/bun": "latest"

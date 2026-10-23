@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { expect, test } from "bun:test";
 
 process.env.AUTH_DATA_DIR = mkdtempSync(join(tmpdir(), "limen-store-test-"));
-const store = await import("./store.ts");
+const store = await import("../src/store.ts");
 
 test("an access invite can be consumed more than once", () => {
   const invite = store.createInvite({

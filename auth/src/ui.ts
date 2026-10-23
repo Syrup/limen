@@ -322,10 +322,11 @@ export function resolveLang(req: Request): Lang {
   const entries = header
     .split(",")
     .map((part, index) => {
-      const [tag, ...params] = part.trim().split(";");
+      const [rawTag = "", ...params] = part.trim().split(";");
+      const tag = rawTag.toLowerCase();
       const qParam = params.map(p => p.trim()).find(p => p.startsWith("q="));
       const q = qParam ? Number(qParam.slice(2)) : 1;
-      return { tag: tag.toLowerCase(), q: Number.isFinite(q) ? q : 0, index };
+      return { tag, q: Number.isFinite(q) ? q : 0, index };
     })
     .filter(entry => entry.tag !== "");
 

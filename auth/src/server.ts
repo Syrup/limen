@@ -80,8 +80,10 @@ type Challenge = { challenge: string; type: "reg" | "auth"; expires: number };
 const challenges = new Map<string, Challenge>();
 const rateBuckets = new Map<string, { count: number; reset: number }>();
 
-function b64uToBuf(s: string): Uint8Array { return new Uint8Array(Buffer.from(s, "base64url")); }
-function bufToB64u(b: Uint8Array | ArrayBuffer): string { return Buffer.from(b).toString("base64url"); }
+function b64uToBuf(s: string): Uint8Array<ArrayBuffer> { return Uint8Array.from(Buffer.from(s, "base64url")); }
+function bufToB64u(b: Uint8Array | ArrayBuffer): string {
+  return Buffer.from(b instanceof ArrayBuffer ? new Uint8Array(b) : b).toString("base64url");
+}
 
 function parseCookies(req: Request): Record<string, string> {
   const header = req.headers.get("cookie") || "";
@@ -289,7 +291,7 @@ async function serveAsset(path: string): Promise<Response> {
   if (!/^[A-Za-z0-9._\/-]+$/.test(rel) || rel.split("/").includes("..")) {
     return new Response("Not found", { status: 404 });
   }
-  const root = join(import.meta.dir, "assets");
+  const root = join(import.meta.dir, "..", "assets");
   const filePath = join(root, rel);
   if (!filePath.startsWith(root + "/")) return new Response("Not found", { status: 404 });
   const file = Bun.file(filePath);
@@ -310,7 +312,8 @@ async function serveAsset(path: string): Promise<Response> {
 async function readBody(req: Request): Promise<Record<string, any>> {
   const type = req.headers.get("content-type") || "";
   if (type.includes("application/json")) {
-    return await req.json().catch(() => ({}));
+    const data = await req.json().catch(() => null);
+    return (data ?? {}) as Record<string, any>;
   }
   const form = await req.formData().catch(() => null);
   if (!form) return {};
@@ -505,17 +508,18 @@ export const server = Bun.serve({
 
     const actionMatch = path.match(/^\/admin\/invites\/([A-Za-z0-9_-]+)\/(revoke|delete)$/);
     if (actionMatch && req.method === "POST") {
+      const inviteId = actionMatch[1] ?? "";
       if (actionMatch[2] === "revoke") {
-        if (!revokeInvite(actionMatch[1])) {
+        if (!revokeInvite(inviteId)) {
           return html(renderInvitesFragment(lang), 404, { "HX-Trigger": toastHeader("not found", "error") });
         }
-        auditRequest(req, "owner", "invite_revoke", actionMatch[1]);
+        auditRequest(req, "owner", "invite_revoke", inviteId);
         return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(UI[lang].admin.toastRevoked) });
       }
-      if (!deleteInvite(actionMatch[1])) {
+      if (!deleteInvite(inviteId)) {
         return html(renderInvitesFragment(lang), 404, { "HX-Trigger": toastHeader("not found", "error") });
       }
-      auditRequest(req, "owner", "invite_delete", actionMatch[1]);
+      auditRequest(req, "owner", "invite_delete", inviteId);
       return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(UI[lang].admin.toastDeleted) });
     }
 

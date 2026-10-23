@@ -12,8 +12,8 @@ services:
       LIMEN_AUTH_PORT: ${LIMEN_AUTH_PORT:-8099}
       LIMEN_BIND: ${LIMEN_BIND:-127.0.0.1}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./errors:/srv/errors:ro
+      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./proxy/errors:/srv/errors:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -62,7 +62,7 @@ services:
         max-size: "5m"
         max-file: "2"
     healthcheck:
-      test: ["CMD", "bun", "run", "healthcheck.ts"]
+      test: ["CMD", "bun", "run", "src/healthcheck.ts"]
       interval: 30s
       timeout: 5s
       retries: 3

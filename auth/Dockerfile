@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --production --frozen-lockfile
 
-COPY server.ts store.ts ui.ts admin.ts fragments.ts invite.ts passkey.ts config.ts healthcheck.ts ./
+COPY src ./src
 COPY assets ./assets
 
 # Bundle the WebAuthn browser library into the image so the login page never
@@ -17,4 +17,4 @@ ENV NODE_ENV=production
 
 EXPOSE 8099
 
-CMD ["bun", "run", "server.ts"]
+CMD ["bun", "run", "src/server.ts"]

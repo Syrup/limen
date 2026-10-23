@@ -3,7 +3,7 @@ import { randomBytes, createHmac, timingSafeEqual, createHash } from "node:crypt
 import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync, renameSync } from "node:fs";
 import { join, basename } from "node:path";
 
-export const DATA_DIR = process.env.AUTH_DATA_DIR || join(import.meta.dir, "data");
+export const DATA_DIR = process.env.AUTH_DATA_DIR || join(import.meta.dir, "..", "data");
 const DB_PATH = process.env.AUTH_DB_PATH || join(DATA_DIR, "auth.db");
 const SECRET_FILE = join(DATA_DIR, "invite-secret");
 const LEGACY_CREDS = join(DATA_DIR, "credentials.json");
