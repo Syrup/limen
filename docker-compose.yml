@@ -5,9 +5,15 @@ services:
     restart: unless-stopped
     network_mode: host
     command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    environment:
+      LIMEN_DOMAIN: ${LIMEN_DOMAIN:?set LIMEN_DOMAIN in .env}
+      LIMEN_AUTH_HOST: ${LIMEN_AUTH_HOST:?set LIMEN_AUTH_HOST in .env}
+      LIMEN_PROXY_PORT: ${LIMEN_PROXY_PORT:-8088}
+      LIMEN_AUTH_PORT: ${LIMEN_AUTH_PORT:-8099}
+      LIMEN_BIND: ${LIMEN_BIND:-127.0.0.1}
     volumes:
-      - /home/keraki/.config/limen/Caddyfile:/etc/caddy/Caddyfile:ro
-      - /home/keraki/.config/limen/errors:/srv/errors:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./errors:/srv/errors:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -19,7 +25,7 @@ services:
         max-size: "5m"
         max-file: "2"
     healthcheck:
-      test: ["CMD", "nc", "-z", "127.0.0.1", "8088"]
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 \"$$LIMEN_PROXY_PORT\""]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -32,19 +38,31 @@ services:
     container_name: limen-core
     restart: unless-stopped
     network_mode: host
-    user: "1000:1000"
+    user: "${LIMEN_UID:-1000}:${LIMEN_GID:-1000}"
     environment:
-      PORT: "8099"
-      TZ: "Asia/Jakarta"
+      PORT: ${LIMEN_AUTH_PORT:-8099}
+      LIMEN_DOMAIN: ${LIMEN_DOMAIN:?set LIMEN_DOMAIN in .env}
+      LIMEN_AUTH_HOST: ${LIMEN_AUTH_HOST:?set LIMEN_AUTH_HOST in .env}
+      LIMEN_PROXY_PORT: ${LIMEN_PROXY_PORT:-8088}
+      LIMEN_SSH_PORT: ${LIMEN_SSH_PORT:-22}
+      LIMEN_OWNER_NAME: ${LIMEN_OWNER_NAME:-owner}
+      LIMEN_RP_NAME: ${LIMEN_RP_NAME:-Limen}
+      LIMEN_TZ: ${LIMEN_TZ:-UTC}
+      TZ: ${LIMEN_TZ:-UTC}
+      LIMEN_OWNER_TTL_HOURS: ${LIMEN_OWNER_TTL_HOURS:-24}
+      LIMEN_MAX_GUEST_SESSIONS: ${LIMEN_MAX_GUEST_SESSIONS:-20}
+      LIMEN_RATE_LIMIT_MAX: ${LIMEN_RATE_LIMIT_MAX:-60}
+      LIMEN_AUDIT_RETENTION_DAYS: ${LIMEN_AUDIT_RETENTION_DAYS:-90}
+      LIMEN_MAX_COOKIE_AGE_DAYS: ${LIMEN_MAX_COOKIE_AGE_DAYS:-400}
     volumes:
-      - /home/keraki/.config/limen/auth/data:/app/data
+      - ./auth/data:/app/data
     logging:
       driver: json-file
       options:
         max-size: "5m"
         max-file: "2"
     healthcheck:
-      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:8099/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "bun", "run", "healthcheck.ts"]
       interval: 30s
       timeout: 5s
       retries: 3

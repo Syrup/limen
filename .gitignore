@@ -1,3 +1,6 @@
+# deployment values
+.env
+
 # runtime state: passkeys, invites, sessions, signing secret
 auth/data/
 

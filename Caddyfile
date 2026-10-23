@@ -4,19 +4,21 @@
 	persist_config off
 }
 
-# Dispatcher: p<port>.example.com -> localhost:<port> (gate via auth-gateway)
-#            auth.example.com      -> auth-gateway (passkey login/register)
-:8088 {
-	bind 127.0.0.1
+# Dispatcher: p<port>.{$LIMEN_DOMAIN} -> localhost:<port> (gate via auth-gateway)
+#            {$LIMEN_AUTH_HOST}      -> auth-gateway (passkey login/register)
+# LIMEN_DOMAIN and LIMEN_AUTH_HOST come from the environment. Compose refuses to
+# start without them, so there is no default that could silently be wrong.
+:{$LIMEN_PROXY_PORT:8088} {
+	bind {$LIMEN_BIND:127.0.0.1}
 
 	map {http.request.host} {target_port} {
-		~^p(?P<pnum>[1-9][0-9]{0,4})\.keraki\.tech$ ${pnum}
+		~^p(?P<pnum>[1-9][0-9]{0,4})\.{$LIMEN_DOMAIN}$ ${pnum}
 		default none
 	}
 
-	@auth host auth.example.com
+	@auth host {$LIMEN_AUTH_HOST}
 	handle @auth {
-		reverse_proxy localhost:8099 {
+		reverse_proxy localhost:{$LIMEN_AUTH_PORT:8099} {
 			flush_interval -1
 		}
 	}
@@ -25,11 +27,11 @@
 	# jadi host tidak valid akan kena gate login kalau digabung.
 	@invalid vars {target_port} none
 	handle @invalid {
-		respond "Subdomain tidak valid. Format: https://p<port>.example.com" 404
+		respond "Subdomain tidak valid. Format: https://p<port>.{$LIMEN_DOMAIN}" 404
 	}
 
 	handle {
-		forward_auth localhost:8099 {
+		forward_auth localhost:{$LIMEN_AUTH_PORT:8099} {
 			uri /verify
 			header_up X-Port {target_port}
 		}

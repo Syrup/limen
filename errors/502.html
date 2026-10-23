@@ -31,7 +31,7 @@ p{margin:0;max-width:38ch;color:#97a19c;font-size:14px;line-height:1.65}
 </head>
 <body>
 <main>
-<div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span class="brand-name">Limen</span><span class="brand-domain">· example.com</span></div>
+<div class="brand"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span class="brand-name">Limen</span><span class="brand-domain">· {{env "LIMEN_DOMAIN"}}</span></div>
 <h1>Tidak ada layanan di balik alamat ini</h1>
 <p>Alamat berhasil dihubungi, tetapi tidak ada proses yang menjawab. Kalau ini server pengembangan, jalankan dulu lalu muat ulang.</p>
 {{if ne (placeholder "target_port") "none"}}<div class="target"><span>Port</span><code>{{placeholder "target_port"}}</code></div>{{end}}
