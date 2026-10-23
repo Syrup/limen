@@ -28,7 +28,6 @@ import {
   trimInviteSessions,
   pruneAudit,
   addAudit,
-  SYSTEM_PORTS,
   durationMs,
   UNITS,
   MIN_DURATION_MS,
@@ -51,19 +50,29 @@ import {
 } from "./ui.ts";
 import { renderAdmin } from "./admin.ts";
 import { renderInvitesFragment, renderPortsFragment } from "./fragments.ts";
+import {
+  AUDIT_RETENTION_MS,
+  AUTH_HOST,
+  AUTH_ORIGIN,
+  COOKIE_DOMAIN,
+  MAX_COOKIE_AGE,
+  MAX_GUEST_SESSIONS,
+  OWNER_NAME,
+  OWNER_TTL_MS,
+  PORT,
+  PORT_HOST_RE,
+  RATE_LIMIT_MAX,
+  RP_ID,
+  RP_NAME,
+  SYSTEM_PORTS,
+  isOurHost,
+  portHost,
+} from "./config.ts";
 
-const PORT = Number(process.env.PORT || 8099);
-const RP_NAME = "example.com homelab";
-const RP_ID = "example.com";
 const OWNER_COOKIE = "ag_session";
 const GUEST_COOKIE = "ag_access";
-const OWNER_TTL_MS = 24 * 60 * 60 * 1000;
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 60;
-const MAX_COOKIE_AGE = 400 * 24 * 60 * 60;
-const MAX_GUEST_SESSIONS = 20;
-const AUDIT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const DEV_OPEN = process.env.NODE_ENV !== "production" && process.env.ADMIN_DEV_OPEN === "1";
 
 type Challenge = { challenge: string; type: "reg" | "auth"; expires: number };
@@ -88,12 +97,10 @@ function parseCookies(req: Request): Record<string, string> {
   return out;
 }
 
-const AUTH_ORIGIN = "https://auth.example.com";
-
 /**
  * WebAuthn ceremonies and admin writes only ever run on the auth host. Accepting
- * any *.example.com origin would let a proxied dev app forge admin POSTs with
- * the shared session cookie.
+ * any subdomain origin would let a proxied dev app forge admin POSTs with the
+ * shared session cookie.
  */
 function isAllowedOrigin(origin: string): boolean {
   return origin === AUTH_ORIGIN;
@@ -114,7 +121,7 @@ function safeNext(next: unknown): string {
   try {
     const url = new URL(next);
     if (url.protocol !== "https:") return "/";
-    if (url.hostname !== "example.com" && !url.hostname.endsWith(".example.com")) return "/";
+    if (!isOurHost(url.hostname)) return "/";
     return url.toString();
   } catch {
     return "/";
@@ -124,7 +131,7 @@ function safeNext(next: unknown): string {
 function nextPort(next: string): number | null {
   try {
     const url = new URL(next);
-    const match = url.hostname.match(/^p([1-9][0-9]{0,4})\.keraki\.tech$/);
+    const match = url.hostname.match(PORT_HOST_RE);
     return match ? Number(match[1]) : null;
   } catch {
     return null;
@@ -187,18 +194,18 @@ function isOwner(req: Request): boolean {
 }
 
 function ownerCookie(token: string): string {
-  return `${OWNER_COOKIE}=${token}; Path=/; Domain=.example.com; HttpOnly; Secure; SameSite=Lax; Max-Age=${Math.floor(OWNER_TTL_MS / 1000)}`;
+  return `${OWNER_COOKIE}=${token}; Path=/; Domain=${COOKIE_DOMAIN}; HttpOnly; Secure; SameSite=Lax; Max-Age=${Math.floor(OWNER_TTL_MS / 1000)}`;
 }
 
 function guestCookie(token: string, expires: number): string {
   const age = Math.min(MAX_COOKIE_AGE, Math.max(60, Math.floor((expires - Date.now()) / 1000)));
-  return `${GUEST_COOKIE}=${token}; Path=/; Domain=.example.com; HttpOnly; Secure; SameSite=Lax; Max-Age=${age}`;
+  return `${GUEST_COOKIE}=${token}; Path=/; Domain=${COOKIE_DOMAIN}; HttpOnly; Secure; SameSite=Lax; Max-Age=${age}`;
 }
 
 function clearAuthCookies(): string[] {
   return [
-    `${OWNER_COOKIE}=; Path=/; Domain=.example.com; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
-    `${GUEST_COOKIE}=; Path=/; Domain=.example.com; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+    `${OWNER_COOKIE}=; Path=/; Domain=${COOKIE_DOMAIN}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+    `${GUEST_COOKIE}=; Path=/; Domain=${COOKIE_DOMAIN}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
   ];
 }
 
@@ -264,7 +271,7 @@ function redirect(url: string, status = 302, headers: Record<string, string> = {
 }
 
 function reconstructNextUrl(req: Request): string {
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "example.com";
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || AUTH_HOST;
   const uri = req.headers.get("x-forwarded-uri") || "/";
   return `https://${host}${uri}`;
 }
@@ -366,7 +373,7 @@ export const server = Bun.serve({
       }
 
       const next = encodeURIComponent(reconstructNextUrl(req));
-      return redirect(`https://auth.example.com/login?next=${next}`, 302);
+      return redirect(`${AUTH_ORIGIN}/login?next=${next}`, 302);
     }
 
     if (path === "/logout") {
@@ -374,7 +381,7 @@ export const server = Bun.serve({
       if (cookies[OWNER_COOKIE]) deleteSession(cookies[OWNER_COOKIE]);
       if (cookies[GUEST_COOKIE]) deleteSession(cookies[GUEST_COOKIE]);
       auditRequest(req, "owner", "logout");
-      const headers = new Headers({ location: "https://auth.example.com/login" });
+      const headers = new Headers({ location: `${AUTH_ORIGIN}/login` });
       for (const cookie of clearAuthCookies()) headers.append("set-cookie", cookie);
       return new Response(null, { status: 302, headers });
     }
@@ -410,7 +417,7 @@ export const server = Bun.serve({
       if (wanted !== "/" && scopeAllows(invite.scope, nextPort(wanted) ?? -1)) {
         target = wanted;
       } else if (invite.scope !== "all" && invite.scope.length === 1) {
-        target = `https://p${invite.scope[0]}.example.com/`;
+        target = `https://${portHost(invite.scope[0]!)}/`;
       }
 
       const existing = getGuest(req);
@@ -614,8 +621,8 @@ export const server = Bun.serve({
       const options = await generateRegistrationOptions({
         rpName: RP_NAME,
         rpID: RP_ID,
-        userName: "keraki",
-        userDisplayName: "keraki",
+        userName: OWNER_NAME,
+        userDisplayName: OWNER_NAME,
         attestationType: "none",
         authenticatorSelection: { residentKey: "preferred", userVerification: "preferred" },
         excludeCredentials: creds.map(c => ({ id: c.id, transports: c.transports as any })),

@@ -1,5 +1,6 @@
-export type Lang = "id" | "en";
+import { DOMAIN, TZ, portHost } from "./config.ts";
 
+export type Lang = "id" | "en";
 export const UI = {
   id: {
     htmlLang: "id",
@@ -449,7 +450,7 @@ export function page(lang: Lang, title: string, main: string, script = ""): stri
 <body>
 <main>
 <header class="masthead">
-  <div class="brand">${MARK}<span class="wordmark">Limen</span><span class="brand-domain">· example.com</span></div>
+  <div class="brand">${MARK}<span class="wordmark">Limen</span><span class="brand-domain">· ${DOMAIN}</span></div>
 </header>
 ${main}
 </main>
@@ -599,7 +600,7 @@ export function renderLogin(lang: Lang): string {
   return page(lang, c.titles.login, `
 <h1>${c.login.heading}</h1>
 <p class="lead">${c.login.lead}</p>
-<div class="target"><span>${c.login.target}</span><code id="target">example.com</code></div>
+<div class="target"><span>${c.login.target}</span><code id="target">${DOMAIN}</code></div>
 <button id="btn" type="button">${c.login.button}</button>
 <div class="status" id="status" role="status"></div>
 <footer class="foot">
@@ -646,11 +647,11 @@ export function renderAccessGranted(lang: Lang, scope: "all" | number[], expires
   const until = new Date(expiresAt).toLocaleString(lang === "en" ? "en-US" : "id-ID", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "Asia/Jakarta",
+    timeZone: TZ,
   });
   const ports = scope === "all"
     ? `<p class="lead">${c.granted.scopeAll}</p>`
-    : `<div class="scope-list">${scope.map(p => `<a href="https://p${p}.example.com/">p${p}</a>`).join("")}</div>`;
+    : `<div class="scope-list">${scope.map(p => `<a href="https://${portHost(p)}/">p${p}</a>`).join("")}</div>`;
   return page(lang, c.titles.granted, `
 <h1>${c.granted.heading}</h1>
 <p class="lead">${c.granted.lead}</p>
@@ -671,7 +672,7 @@ export function renderPortBlocked(lang: Lang, port: number): string {
 
 export function renderPortDenied(lang: Lang, port: number, scope: number[]): string {
   const c = UI[lang];
-  const list = scope.map(p => `<a href="https://p${p}.example.com/">p${p}</a>`).join("");
+  const list = scope.map(p => `<a href="https://${portHost(p)}/">p${p}</a>`).join("");
   return page(lang, c.titles.denied, `
 <h1>${c.denied.heading}</h1>
 <p class="lead">${c.denied.lead}</p>

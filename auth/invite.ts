@@ -7,8 +7,9 @@ import {
   MAX_DURATION_MS,
   type Unit,
 } from "./store.ts";
+import { AUTH_ORIGIN, TZ } from "./config.ts";
 
-const BASE_URL = process.env.BASE_URL || "https://auth.example.com";
+const BASE_URL = AUTH_ORIGIN;
 
 function arg(name: string): string | undefined {
   const index = process.argv.indexOf(`--${name}`);
@@ -51,6 +52,6 @@ console.log(type === "access" ? "Limen · invite akses sementara:" : "Limen · i
 console.log("");
 console.log(`  ${url}`);
 console.log("");
-console.log(`Berlaku sampai ${new Date(invite.expiresAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}.`);
+console.log(`Berlaku sampai ${new Date(invite.expiresAt).toLocaleString("id-ID", { timeZone: TZ })}.`);
 console.log(type === "access" ? `Cakupan: ${invite.scope === "all" ? "semua port" : invite.scope.join(", ")}.` : "Sekali pakai.");
 console.log("");

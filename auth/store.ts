@@ -294,8 +294,6 @@ export function setPortBlocked(port: number, blocked: boolean): void {
   }
 }
 
-export const SYSTEM_PORTS = new Set([22, 8088, 8099]);
-
 export function listeningPorts(): number[] {
   const ports = new Set<number>();
   for (const file of ["/proc/net/tcp", "/proc/net/tcp6"]) {

@@ -5,11 +5,11 @@ import {
   inviteToken,
   loadBlockedPorts,
   listeningPorts,
-  SYSTEM_PORTS,
   type Invite,
 } from "./store.ts";
+import { AUTH_ORIGIN, SYSTEM_PORTS, TZ } from "./config.ts";
 
-const BASE_URL = process.env.BASE_URL || "https://auth.example.com";
+const BASE_URL = AUTH_ORIGIN;
 
 const esc = (value: unknown): string => String(value).replace(/[&<>"']/g, (c) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -49,7 +49,7 @@ export function renderInvitesFragment(lang: Lang): string {
     const type = invite.type === "access" ? c.typeAccessShort : c.typePasskeyShort;
     const scope = invite.scope === "all" ? c.scopeAllShort : invite.scope.map(p => `p${p}`).join(", ");
     const uses = invite.maxUses === null ? `${invite.uses} ${c.usesUnit}` : `${invite.uses}/${invite.maxUses}`;
-    const expires = new Date(invite.expiresAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" });
+    const expires = new Date(invite.expiresAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: TZ });
     const label = invite.label || "-";
     const canRevoke = state === "active";
 

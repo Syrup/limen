@@ -7,6 +7,9 @@ import { afterAll, expect, test } from "bun:test";
 // live service never uses.
 process.env.AUTH_DATA_DIR = mkdtempSync(join(tmpdir(), "limen-server-test-"));
 process.env.PORT = "18099";
+process.env.LIMEN_DOMAIN = "limen.test";
+process.env.LIMEN_AUTH_HOST = "auth.limen.test";
+process.env.LIMEN_TZ = "UTC";
 
 const { server } = await import("./server.ts");
 const store = await import("./store.ts");
@@ -64,7 +67,7 @@ test("an unauthenticated port request is sent to the login page", async () => {
     redirect: "manual",
   });
   expect(res.status).toBe(302);
-  expect(res.headers.get("location")).toContain("https://auth.example.com/login?next=");
+  expect(res.headers.get("location")).toContain("https://auth.limen.test/login?next=");
 });
 
 test("a guest session only passes the ports in its scope", async () => {
@@ -130,14 +133,14 @@ test("admin writes only accept the auth origin", async () => {
 
   const foreign = await fetch(`${base}/admin/invites`, {
     method: "POST",
-    headers: { ...form, cookie: `ag_session=${token}`, origin: "https://p4323.example.com" },
+    headers: { ...form, cookie: `ag_session=${token}`, origin: "https://p4323.limen.test" },
     body,
   });
   expect(foreign.status).toBe(403);
 
   const own = await fetch(`${base}/admin/invites`, {
     method: "POST",
-    headers: { ...form, cookie: `ag_session=${token}`, origin: "https://auth.example.com" },
+    headers: { ...form, cookie: `ag_session=${token}`, origin: "https://auth.limen.test" },
     body,
   });
   expect(own.status).toBe(200);
