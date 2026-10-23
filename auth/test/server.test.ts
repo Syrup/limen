@@ -96,7 +96,7 @@ test("a blocked port is refused even for the owner", async () => {
     headers: { "x-port": "5003", cookie: `ag_session=${token}` },
   });
   expect(res.status).toBe(403);
-  expect(await res.text()).toContain("Port ini tidak tersedia");
+  expect(await res.text()).toContain("This port is unavailable");
 });
 
 test("opening an access link again in the same browser reuses the session", async () => {

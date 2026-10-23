@@ -338,7 +338,7 @@ export function resolveLang(req: Request): Lang {
     if (entry.tag === "id" || entry.tag.startsWith("id-")) return "id";
     if (entry.tag === "en" || entry.tag.startsWith("en-")) return "en";
   }
-  return "id";
+  return "en";
 }
 
 const STYLES = `
