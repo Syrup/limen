@@ -78,7 +78,7 @@ Built for a single owner on one host. There is no multi-user store, no session l
 - [docs/GUIDE.md](docs/GUIDE.md): day to day use, written for someone who just wants to open a dev server.
 - [docs/WORKFLOW.md](docs/WORKFLOW.md): request path, security properties, operations, backup and restore, failure modes.
 - [worker/README.md](worker/README.md): deploying and rolling back the edge filter.
-- [CONTRIBUTING.md](CONTRIBUTING.md): setup, tests, layout, and what a change should include.
+- [CONTRIBUTING.md](CONTRIBUTING.md): setup, tests, layout, and [adding a language](CONTRIBUTING.md#adding-a-language).
 
 ## Security
 

@@ -104,7 +104,11 @@ docker compose up -d --build
     src/
       server.ts             # HTTP routes, sessions, WebAuthn, enforcement
       store.ts              # invites (HMAC), passkeys, ports, signing secret
-      ui.ts                 # server-rendered auth pages and language strings
+      ui.ts                 # server-rendered auth pages
+      i18n/
+        en.json             # source strings, the shape every locale follows
+        id.json             # Indonesian translation
+        index.ts            # resources, Lang, resolveLang, translator()
       admin.ts              # dashboard shell (htmx + Alpine)
       fragments.ts          # invite and port fragments for htmx
       invite.ts             # CLI for passkey and access invites
@@ -175,7 +179,13 @@ The `auth/data` directory is bind-mounted into the container, so it survives reb
 
 The login, registration, and invalid-invite pages share one dark layout defined in `server.ts`. Copy is written for the person using the gate, not for developers. The page shows the destination host taken from `next`, reports errors by name and recovery step, and marks the status region with `role="status"` so screen readers announce changes.
 
-Language is resolved per request from `Accept-Language`. An `id*` tag wins if it ranks first, an `en*` tag wins if it ranks first, and English is the fallback when neither appears. There is no switcher and no language cookie. API error strings use the same header, so a failed request reports in the language of the page that made it.
+Language is resolved per request from `Accept-Language`. The first tag that matches a locale file wins, and English is the fallback. There is no switcher and no language cookie. API error strings use the same header, so a failed request reports in the language of the page that made it.
+
+Strings live in `auth/src/i18n/<code>.json` and are loaded by i18next at start. English is the source file, every other locale must have the same keys, and a test enforces that. Server rendering calls `translator(lang)` to get a `t` bound to one language, so nothing depends on global language state.
+
+Plurals use i18next's CLDR suffixes (`uses_one`, `uses_other`, and the rest of the categories when a language needs them). Dates use `Intl` with a tag from the locale registry, not from the translation file.
+
+Adding a language means adding one JSON file and one line in `auth/src/i18n/index.ts`. The Caddy error pages are separate: a new language there needs a copy of `proxy/errors/502.en.html` and two lines in the Caddyfile.
 
 ### Authenticated request to a port host
 

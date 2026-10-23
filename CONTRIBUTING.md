@@ -38,7 +38,7 @@ Add a test for anything that changes behaviour. The invite lifecycle, session sc
 
 | Path | What lives there |
 |---|---|
-| `auth/src` | the Bun service: routes, store, UI, config |
+| `auth/src` | the Bun service: routes, store, UI, config, locales |
 | `auth/test` | tests, run with `bun test` |
 | `auth/assets` | fonts, vendored JS, and the stylesheet built by `admin-ui` |
 | `proxy` | Caddyfile and the error pages |
@@ -46,12 +46,21 @@ Add a test for anything that changes behaviour. The invite lifecycle, session sc
 | `backup` | snapshot and restore scripts, systemd units |
 | `docs` | the guide and the technical reference |
 
+## Adding a language
+
+1. Copy `auth/src/i18n/en.json` to `auth/src/i18n/<code>.json` and translate the values. Leave the keys alone.
+2. Open `auth/src/i18n/index.ts`, import the file, add it to `resources`, and add the code to `INTL_LOCALE` and `HTML_LANG` so dates and `<html lang>` are correct.
+3. Run `make test`. One test compares every locale against English and fails when a key is missing or extra.
+4. Optional: copy `proxy/errors/502.en.html` to `502.<code>.html` and add one matcher plus one `respond` line to the invalid-host block and the 502 block in `proxy/Caddyfile`.
+
+The files are plain JSON in the i18next v4 shape on purpose. Weblate imports that format directly, so a translation platform can open a pull request without anyone touching TypeScript. English is the source of truth: add a string there first, and the parity test will tell you which locales still need it.
+
 ## Style
 
 - Match the file you are editing. The codebase uses two spaces, double quotes, and no semicolons omitted by accident.
 - Comments explain why. Keep them to one or two lines.
 - Avoid new runtime dependencies. The image stays small on purpose, and the auth service runs on a 4 GiB machine.
-- Code, comments, commits, docs, and CLI output are English. Web pages are bilingual, Indonesian and English, both in `auth/src/ui.ts`.
+- Code, comments, commits, docs, and CLI output are English. Web pages are translated through `auth/src/i18n/`.
 - Never commit `.env`, `auth/data`, `backup/env`, `backup/keys`, or the gloak binary. `.gitignore` covers them; check `git status` before pushing.
 
 ## Commits and pull requests
