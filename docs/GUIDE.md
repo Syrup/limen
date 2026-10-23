@@ -287,7 +287,7 @@ Possible causes, in order of likelihood:
 
 ### "SecurityError" or "relying party ID" message
 
-You reached the login page through the wrong address. Use `https://auth.example.com` exactly. Accessing through `http://<host-ip>:8099` or another domain will fail, because the passkey is tied to `example.com`.
+You reached the login page through the wrong address. Use `https://auth.example.com` exactly. Accessing through an IP address or another domain will fail, because the passkey is tied to `example.com`.
 
 ### Site cannot be reached at all
 
