@@ -10,9 +10,9 @@ I built this because showing a project to someone was always more work than the 
 
 An SSH tunnel meant the other person needed a client, and I had to hand over a key or a password. Ngrok and the hosted tunnels dropped the client but wanted an account and a token first. Both added steps before anything was visible on their screen.
 
-What I wanted was boring: whatever port is already listening shows up at `p<port>.<domain>`, with no registration step. The dashboard lists what is up so I can block what I do not want exposed. A passkey is the only way in. When a friend or a client needs to see one app, I send a link with an expiry date.
+So I wrote my own. Whatever port is already listening shows up at `p<port>.<domain>`, with no registration step. The dashboard lists what is up so I can block what I do not want exposed. A passkey is the only way in. When a friend or a client needs to see one app, I send a link with an expiry date.
 
-A domain is still required, which is the annoying part. Certificates and cookies need one, and wildcard DNS is what makes `p<port>` work. The tunnel runs on a free Cloudflare account.
+A domain is still required. Yes, it is a must. Certificates and cookies need one, and wildcard DNS is what makes `p<port>` work. The tunnel runs on a free Cloudflare account.
 
 ## How it works
 
@@ -91,7 +91,7 @@ Both suites use temporary state and never touch a running deployment.
 
 ## Status
 
-Built for a single owner on one host. There is no multi-user store, no session list in the dashboard, and SQLite allows one writer. It runs daily here, but treat it as a homelab tool, not a multi-tenant service.
+Built for a single owner on one host. There is no multi-user store, no session list in the dashboard, and SQLite allows one writer. I run it every day on my own machine. I am still working on it.
 
 ## Docs
 
@@ -102,7 +102,7 @@ Built for a single owner on one host. There is no multi-user store, no session l
 
 ## Security
 
-The threat model, and the parts this does not protect against, are in [docs/WORKFLOW.md](docs/WORKFLOW.md#security-properties). The short version: passkeys are bound to the zone, session cookies are `HttpOnly` and scoped to the zone, invite tokens are HMAC-derived and redacted from logs, and the gate runs before the proxy contacts your app.
+The threat model, and the parts this does not protect against, are in [docs/WORKFLOW.md](docs/WORKFLOW.md#security-properties). TL;DR: passkeys are bound to the zone, session cookies are `HttpOnly` and scoped to the zone, invite tokens are HMAC-derived and redacted from logs, and the gate runs before the proxy contacts your app.
 
 ## License
 
