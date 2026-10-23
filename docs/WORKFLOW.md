@@ -175,7 +175,7 @@ The `auth/data` directory is bind-mounted into the container, so it survives reb
 
 The login, registration, and invalid-invite pages share one dark layout defined in `server.ts`. Copy is written for the person using the gate, not for developers. The page shows the destination host taken from `next`, reports errors by name and recovery step, and marks the status region with `role="status"` so screen readers announce changes.
 
-Language is resolved per request from `Accept-Language`. An `id*` tag wins if it ranks first, an `en*` tag wins if it ranks first, and Indonesian is the fallback when neither appears. There is no switcher and no language cookie. API error strings use the same header, so a failed request reports in the language of the page that made it.
+Language is resolved per request from `Accept-Language`. An `id*` tag wins if it ranks first, an `en*` tag wins if it ranks first, and English is the fallback when neither appears. There is no switcher and no language cookie. API error strings use the same header, so a failed request reports in the language of the page that made it.
 
 ### Authenticated request to a port host
 
@@ -284,9 +284,9 @@ The domain scope is what makes one login cover every port. The trade-off is that
 
     @invalid vars {target_port} none
     handle @invalid {
-        @en header_regexp Accept-Language (?i)^\s*en
-        respond @en "Invalid subdomain..." 404
-        respond "Subdomain tidak valid..." 404
+        @id header_regexp Accept-Language (?i)^\s*id
+        respond @id "Subdomain tidak valid..." 404
+        respond "Invalid subdomain..." 404
     }
 
     handle {
@@ -356,11 +356,11 @@ When the dispatcher cannot reach an app, Caddy produces a 502. Cloudflare replac
 handle_errors {
     @502 expression {http.error.status_code} == 502
     handle @502 {
-        @en header_regexp Accept-Language (?i)^\s*en
+        @id header_regexp Accept-Language (?i)^\s*id
         header Content-Type "text/html; charset=utf-8"
         templates { root /srv/errors }
-        respond @en "{{include \"502.en.html\"}}" 503
-        respond "{{include \"502.html\"}}" 503
+        respond @id "{{include \"502.html\"}}" 503
+        respond "{{include \"502.en.html\"}}" 503
     }
     respond "{http.error.status_code}" {http.error.status_code}
 }
@@ -371,7 +371,7 @@ Details that matter:
 - The status is 503 on purpose. A 502 body from the origin never reaches the browser because Cloudflare substitutes its own page. Verified by stopping the auth service and reading the public response.
 - `templates` with `include` executes the file as a template, so `{{placeholder "target_port"}}` resolves from the `map` set earlier in the request.
 - The port row is hidden when `target_port` is `none`, which is the case when the auth service itself is down.
-- Language uses the same `Accept-Language` matcher as the rest of the site.
+- Language uses the same `Accept-Language` rule as the rest of the site: Indonesian when the browser asks for `id`, English otherwise.
 - The port value comes from the `[1-9][0-9]{0,4}` regex, so it is digits only and safe to render.
 - Only proxy-level failures reach this block. A 404 from the invalid-host rule or a 403 from the auth service is a normal response and stays untouched.
 - The page has a reload link that works without JavaScript. The inline handler only avoids adding a history entry.

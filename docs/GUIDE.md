@@ -31,7 +31,7 @@ This is the whole routine.
 
 The link never changes. Port 4323 is always `p4323`, port 7000 is always `p7000`.
 
-The pages follow your browser language automatically. A browser that asks for English gets English; everything else gets Indonesian. There is no language switch to manage and nothing to configure.
+The pages follow your browser language automatically. A browser that asks for Indonesian gets Indonesian; everything else gets English. There is no language switch to manage and nothing to configure.
 
 ### The address pattern
 
