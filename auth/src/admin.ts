@@ -1,4 +1,4 @@
-import { HTML_LANG, translator, type Lang } from "./i18n/index.ts";
+import { translator, type Lang } from "./i18n/index.ts";
 import { DOMAIN } from "./config.ts";
 
 const MARK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-[13px] w-[13px]"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>`;
@@ -23,7 +23,7 @@ export function renderAdmin(lang: Lang): string {
     .join("");
 
   return `<!doctype html>
-<html lang="${HTML_LANG[lang]}" class="dark">
+<html lang="${lang}" class="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

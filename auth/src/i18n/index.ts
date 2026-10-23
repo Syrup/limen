@@ -1,36 +1,37 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { basename, join } from "node:path";
 import i18next, { type TFunction } from "i18next";
 import en from "./en.json";
-import id from "./id.json";
 
 /**
  * Locale files live next to this module as plain JSON, so a translation platform
- * can read and write them without touching TypeScript. English is the source.
+ * can add a language without touching TypeScript. English is the source file and
+ * also the type reference for every key.
  */
-const resources = {
-  en: { translation: en },
-  id: { translation: id },
-} as const;
+const DIR = import.meta.dir;
 
-export type Lang = keyof typeof resources;
+const resources: Record<string, { translation: Record<string, unknown> }> = {};
 
-export const DEFAULT_LANG: Lang = "en";
+for (const file of readdirSync(DIR)) {
+  if (!file.endsWith(".json")) continue;
+  const code = basename(file, ".json");
+  try {
+    resources[code] = { translation: JSON.parse(readFileSync(join(DIR, file), "utf8")) };
+  } catch (error) {
+    console.error(`[limen] skipped locale ${code}: ${error}`);
+  }
+}
 
-/** Tags for Intl, kept beside the resources because they are per language. */
-export const INTL_LOCALE: Record<Lang, string> = {
-  en: "en-US",
-  id: "id-ID",
-};
+export type Lang = string;
 
-export const HTML_LANG: Record<Lang, string> = {
-  en: "en-US",
-  id: "id",
-};
+export const LOCALES = Object.keys(resources).sort();
+export const DEFAULT_LANG = "en";
 
 i18next.init({
   resources,
   lng: DEFAULT_LANG,
   fallbackLng: DEFAULT_LANG,
-  supportedLngs: Object.keys(resources),
+  supportedLngs: LOCALES,
   initAsync: false,
   interpolation: { escapeValue: false },
 });
@@ -38,10 +39,6 @@ i18next.init({
 /** A `t` bound to one language. Server rendering needs this instead of global state. */
 export function translator(lang: Lang): TFunction {
   return i18next.getFixedT(lang);
-}
-
-export function isLang(value: string): value is Lang {
-  return Object.prototype.hasOwnProperty.call(resources, value);
 }
 
 /** Pick a language from Accept-Language. Unknown languages fall back to English. */
@@ -61,7 +58,7 @@ export function resolveLang(req: Request): Lang {
   entries.sort((a, b) => b.q - a.q || a.index - b.index);
 
   for (const entry of entries) {
-    for (const lang of Object.keys(resources) as Lang[]) {
+    for (const lang of LOCALES) {
       if (entry.tag === lang || entry.tag.startsWith(`${lang}-`)) return lang;
     }
   }

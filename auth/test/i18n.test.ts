@@ -1,7 +1,15 @@
 import { expect, test } from "bun:test";
-import en from "../src/i18n/en.json";
-import id from "../src/i18n/id.json";
-import { DEFAULT_LANG, resolveLang, translator } from "../src/i18n/index.ts";
+import { readdirSync, readFileSync } from "node:fs";
+import { basename, join } from "node:path";
+import { DEFAULT_LANG, LOCALES, resolveLang, translator } from "../src/i18n/index.ts";
+
+const DIR = join(import.meta.dir, "../src/i18n");
+const CODES = readdirSync(DIR)
+  .filter((file) => file.endsWith(".json"))
+  .map((file) => basename(file, ".json"))
+  .sort();
+
+const load = (code: string) => JSON.parse(readFileSync(join(DIR, `${code}.json`), "utf8"));
 
 function flatten(value: unknown, prefix = ""): string[] {
   if (typeof value !== "object" || value === null) return [prefix];
@@ -13,10 +21,15 @@ function flatten(value: unknown, prefix = ""): string[] {
 const pick = (header?: string) =>
   resolveLang(new Request("http://localhost/", header ? { headers: { "accept-language": header } } : undefined));
 
+test("the registry loads every locale file", () => {
+  expect(LOCALES).toEqual(CODES);
+  expect(LOCALES).toContain(DEFAULT_LANG);
+});
+
 test("every locale has the same keys as English", () => {
-  const reference = flatten(en).sort();
-  for (const [code, dict] of Object.entries({ en, id })) {
-    expect({ code, keys: flatten(dict).sort() }).toEqual({ code, keys: reference });
+  const reference = flatten(load("en")).sort();
+  for (const code of CODES) {
+    expect({ code, keys: flatten(load(code)).sort() }).toEqual({ code, keys: reference });
   }
 });
 

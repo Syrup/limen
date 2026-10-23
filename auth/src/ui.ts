@@ -1,5 +1,5 @@
 import { DOMAIN, TZ, portHost } from "./config.ts";
-import { HTML_LANG, INTL_LOCALE, translator, type Lang } from "./i18n/index.ts";
+import { translator, type Lang } from "./i18n/index.ts";
 
 const STYLES = `
 :root{
@@ -99,7 +99,7 @@ export const MARK = `<span class="mark" aria-hidden="true"><svg viewBox="0 0 24 
 
 export function page(lang: Lang, title: string, main: string, script = ""): string {
   return `<!doctype html>
-<html lang="${HTML_LANG[lang]}">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -328,7 +328,7 @@ export function renderInviteInvalid(lang: Lang): string {
 
 export function renderAccessGranted(lang: Lang, scope: "all" | number[], expiresAt: string): string {
   const t = translator(lang);
-  const until = new Date(expiresAt).toLocaleString(INTL_LOCALE[lang], {
+  const until = new Date(expiresAt).toLocaleString(lang, {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: TZ,
