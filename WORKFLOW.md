@@ -20,7 +20,7 @@ Browser
   |  HTTPS, certificate *.example.com
   v
 Cloudflare edge (Universal SSL, proxied wildcard DNS)
-  |  Worker "keraki-host-filter" (route *.example.com/*)
+  |  Worker "limen-host-filter" (route *.example.com/*)
   |  allowed hosts pass through, everything else 404 at the edge
   |  encrypted tunnel (QUIC)
   v
@@ -44,11 +44,43 @@ Local app (Astro dev/preview, any HTTP server)
 
 Two containers, one compose project, both on the host network namespace. Nothing listens on a public interface. Cloudflare is the only ingress.
 
+## Configuration
+
+Every value that differs between installs lives in `.env`, which Compose reads automatically. `.env` is gitignored; `.env.example` is the template.
+
+```bash
+cp .env.example .env
+# edit the two required values, then start
+docker compose up -d --build
+```
+
+| Variable | Default | What it controls |
+|---|---|---|
+| `LIMEN_DOMAIN` | required | The zone. Port hosts become `p<port>.<domain>` and cookies are scoped to `.<domain>`. |
+| `LIMEN_AUTH_HOST` | required | Host that serves the login page and dashboard. Also the only accepted `Origin`. |
+| `LIMEN_PROXY_PORT` | `8088` | Loopback port Caddy listens on. |
+| `LIMEN_AUTH_PORT` | `8099` | Loopback port the auth service listens on. |
+| `LIMEN_BIND` | `127.0.0.1` | Interface Caddy binds. |
+| `LIMEN_SSH_PORT` | `22` | Port that cannot be blocked from the dashboard. |
+| `LIMEN_OWNER_NAME` | `owner` | Name stored with the passkey. |
+| `LIMEN_RP_NAME` | `Limen` | Relying party name in the passkey prompt. |
+| `LIMEN_TZ` | `UTC` | Timezone for dates in the dashboard and invite pages. |
+| `LIMEN_OWNER_TTL_HOURS` | `24` | Owner session lifetime. |
+| `LIMEN_MAX_GUEST_SESSIONS` | `20` | Guest sessions kept per access invite. |
+| `LIMEN_RATE_LIMIT_MAX` | `60` | Requests per minute per IP on the limited paths. |
+| `LIMEN_AUDIT_RETENTION_DAYS` | `90` | Audit rows kept. |
+| `LIMEN_MAX_COOKIE_AGE_DAYS` | `400` | Upper bound for the guest cookie. |
+| `LIMEN_UID` / `LIMEN_GID` | `1000` | Ownership of `auth/data`. |
+
+`auth/config.ts` reads these names. The domain and auth host are required: without them the service exits with code 78 instead of guessing, and Compose refuses to start. The Caddyfile uses the same variables.
+
 ## Files
 
 ```
 ~/.config/limen/
   .gitignore                # keeps runtime state, secrets, and keys out of git
+  .env.example              # template for deployment values
+  .env                      # local values, gitignored
   docker-compose.yml        # proxy + auth services
   Caddyfile                 # dispatcher rules, mounted read-only
   GUIDE.md                  # non-technical guide
@@ -66,6 +98,8 @@ Two containers, one compose project, both on the host network namespace. Nothing
     fragments.ts            # invite and port fragments for htmx
     invite.ts               # CLI for passkey and access invites
     passkey.ts              # CLI to list and remove registered passkeys
+    config.ts               # every deployment value, read from the environment
+    healthcheck.ts          # container health probe against /health
     server.test.ts          # HTTP tests against a temporary database
     store.test.ts           # invite, claim, session, and port tests
     assets/
@@ -190,7 +224,7 @@ The `blocked_ports` table stores the blocked list. `/verify` checks it before an
 |---|---|
 | Relying party ID | `example.com` |
 | Relying party name | `example.com homelab` |
-| User name and display name | `keraki` |
+| User name and display name | `LIMEN_OWNER_NAME` |
 | Attestation | `none` |
 | Resident key | `preferred` |
 | User verification | `preferred` for options, required on verification |
@@ -221,17 +255,17 @@ The domain scope is what makes one login cover every port. The trade-off is that
 ## Caddyfile behavior
 
 ```caddyfile
-:8088 {
-    bind 127.0.0.1
+:{$LIMEN_PROXY_PORT:8088} {
+    bind {$LIMEN_BIND:127.0.0.1}
 
     map {http.request.host} {target_port} {
-        ~^p(?P<pnum>[1-9][0-9]{0,4})\.keraki\.tech$ ${pnum}
+        ~^p(?P<pnum>[1-9][0-9]{0,4})\.{$LIMEN_DOMAIN}$ ${pnum}
         default none
     }
 
-    @auth host auth.example.com
+    @auth host {$LIMEN_AUTH_HOST}
     handle @auth {
-        reverse_proxy localhost:8099 { flush_interval -1 }
+        reverse_proxy localhost:{$LIMEN_AUTH_PORT:8099} { flush_interval -1 }
     }
 
     @invalid vars {target_port} none
@@ -240,7 +274,7 @@ The domain scope is what makes one login cover every port. The trade-off is that
     }
 
     handle {
-        forward_auth localhost:8099 {
+        forward_auth localhost:{$LIMEN_AUTH_PORT:8099} {
             uri /verify
             header_up X-Port {target_port}
         }
@@ -255,6 +289,8 @@ The domain scope is what makes one login cover every port. The trade-off is that
 
 Notes on the choices:
 
+- `LIMEN_DOMAIN` and `LIMEN_AUTH_HOST` have no defaults on purpose. Compose refuses to start without them, so a missing value is an error instead of a proxy that quietly matches the wrong host.
+- The domain lands inside a regex literally, so its dots match any character. A stray hostname never reaches Caddy because the tunnel ingress and the edge Worker both key on the real zone.
 - `bind 127.0.0.1` keeps the listener off the LAN interface.
 - `header_up X-Port` passes the extracted port to the auth service. Without it, `/verify` cannot apply per-port scopes or the blocked-port list.
 - The invalid check sits in its own `handle` block. Caddy sorts `forward_auth` ahead of `respond` inside a single branch, so combining them makes junk hosts hit the login gate and return 302 instead of 404. Separate `handle` blocks are mutually exclusive and keep the check first.
@@ -269,19 +305,19 @@ Notes on the choices:
 
 - Zone `example.com` is on Cloudflare nameservers.
 - A proxied CNAME `*.example.com` points to `<tunnel-id>.cfargotunnel.com`.
-- The tunnel config at `~/.cloudflared/config.yml` lists an ingress rule `*.example.com -> http://127.0.0.1:8088` before the `http_status:404` catch-all. Specific hostnames such as `ssh.example.net` stay on their own rules.
+- The tunnel config at `~/.cloudflared/config.yml` lists an ingress rule `*.example.com -> http://127.0.0.1:8088` before the `http_status:404` catch-all. Specific hostnames such as a separate SSH host stay on their own rules.
 - Universal SSL issues `example.com` and `*.example.com`. A name like `4323.p.example.com` is two levels deep and has no certificate, so the TLS handshake fails. That is why the port pattern uses a prefix (`p4323`) instead of a nested label.
 - `cloudflared` runs as a user unit: `~/.config/systemd/user/cloudflared.service`, enabled, with linger on.
 
 ## Edge host filter
 
-The wildcard DNS record makes every `*.example.com` name resolve, junk included. Caddy answers 404 for those after the request crosses the tunnel. To stop them earlier, the Worker `keraki-host-filter` runs on the route `*.example.com/*` and answers at the edge.
+The wildcard DNS record makes every `*.example.com` name resolve, junk included. Caddy answers 404 for those after the request crosses the tunnel. To stop them earlier, the Worker `limen-host-filter` runs on the route `*.example.com/*` and answers at the edge.
 
 Allowlist:
 
 - `example.com`
 - `auth.example.com`
-- `p<1-65535>.example.com`, regex `^p[1-9][0-9]{0,4}\.keraki\.tech$`
+- `p<1-65535>.example.com`, regex `^p[1-9][0-9]{0,4}\.example\.com$`
 
 Anything else gets `404` with body `Not found` and the header `x-host-filter: blocked`. Allowed requests are forwarded with `fetch(request)`.
 
@@ -383,6 +419,8 @@ A digest belongs to one architecture. Moving the stack to an arm host means new 
 ### Tests
 
 `cd auth && bun test` runs the HTTP and store tests against a temporary database on a spare port, so it never touches the live data. The suite covers the invite lifecycle, sessions, port scopes, the gate redirect, the security headers, and the rate limit. It needs the dependencies installed locally (`bun install`), not the running containers.
+
+`cd worker && bun test` checks the edge host filter: the allowlist, the lookalike domains, and the fail-closed path when the deployment values are missing.
 
 ### Logs
 
@@ -527,27 +565,24 @@ The backup tool is alpha. Keep one independent copy (for example a weekly encryp
 
 ### Change the domain
 
-Passkeys are bound to the RP ID. Moving to another domain invalidates all of them.
+Passkeys are bound to the RP ID, which is `LIMEN_DOMAIN`. Moving to another domain invalidates all of them.
 
-1. Update `RP_ID` and the `isAllowedOrigin` suffix in `auth/server.ts`.
-2. Update the host regex in `Caddyfile` and the `cf-connecting-ip` assumptions if needed.
-3. Update the tunnel ingress and the wildcard DNS record to the new zone.
+1. Set `LIMEN_DOMAIN` and `LIMEN_AUTH_HOST` in `.env`.
+2. Update the tunnel ingress and the wildcard DNS record to the new zone.
+3. Update `[vars]` and the route pattern in `worker/wrangler.toml`, then deploy the Worker.
 4. `docker compose up -d --build`.
 5. Remove every passkey with `bun run passkey.ts remove <id>` (or clear the `credentials` and `sessions` tables), then register fresh passkeys through an invite.
-6. Update the hardcoded `https://auth.example.com` URLs in `server.ts`, `invite.ts`, and `fragments.ts`, plus `BASE_URL` if it is set.
-
-Step 6 is the easy one to forget. Grep for `example.com` before deploying.
 
 ### Migrate to another host
 
 1. Install Docker and the Cloudflare tunnel client.
-2. Copy the project folder, `auth/data/auth.db`, `auth/data/invite-secret`, `backup/keys/`, and `~/.cloudflared` credentials.
+2. Copy the project folder including `.env`, `auth/data/auth.db`, `auth/data/invite-secret`, `backup/env`, `backup/keys/`, and `~/.cloudflared` credentials.
 3. Recreate the user systemd unit for cloudflared and the backup units.
 4. `docker compose up -d --build`.
-5. Confirm `cloudflared tunnel info homelab` shows connections.
+5. Confirm `cloudflared tunnel info <name>` shows connections.
 6. Keep DNS unchanged; it points at the tunnel, not the host.
 
-The compose file uses absolute paths under `/home/keraki`. On a host with a different username, update the bind mounts and the `user:` field to match the local UID.
+The compose file uses relative paths, so the project directory can live anywhere. Set `LIMEN_UID` and `LIMEN_GID` in `.env` to the user that owns `auth/data`.
 
 ## Verification matrix
 
@@ -565,6 +600,7 @@ Run these after any change.
 | Security headers | `curl -sD - -o /dev/null https://auth.example.com/login \| grep -i x-frame-options` | `x-frame-options: DENY` |
 | Malformed cookie | `curl -s -o /dev/null -w "%{http_code}" -H 'Cookie: ag_session=%' https://auth.example.com/login` | `200` |
 | Unit tests | `cd auth && bun test` | `21 pass, 0 fail` |
+| Worker tests | `cd worker && bun test` | `4 pass, 0 fail` |
 | Containers healthy | `docker compose ps` | both `healthy` |
 | Gate redirect | `curl -s -o /dev/null -w "%{http_code} %{redirect_url}" https://p4323.example.com/` | `302` to `https://auth.example.com/login?next=...` |
 | Invalid host | `curl -s -o /dev/null -w "%{http_code}" https://asalan.example.com/` | `404` |
@@ -588,7 +624,7 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 |---|---|---|---|
 | `503` from the proxy with a custom page | Backend not listening | Page shows the port, `ss -tln \| grep ':<port>'` | Start the app, or correct the port |
 | `502` on auth host too | Auth container down or crashed | `docker compose logs --tail=50 auth` | Fix the error, `docker compose up -d auth` |
-| `404 Subdomain tidak valid` | Host does not match `^p[1-9][0-9]{0,4}\.keraki\.tech$` | Compare the URL | Use `p<port>.example.com`, one level deep |
+| `404 Subdomain tidak valid` | Host does not match `^p[1-9][0-9]{0,4}\.example\.com$` | Compare the URL | Use `p<port>.example.com`, one level deep |
 | `403 Port ini tidak tersedia` | Port is blocked in the dashboard | `docker compose exec auth bun -e '...'` or check the dashboard | Toggle it back on in the `Port` panel |
 | `403 Port ini di luar aksesmu` | Guest scope does not cover the port | Check the invite scope in the dashboard | Create a link with the right ports |
 | `404` on `/fragments/*` | No owner session, or the session expired | Cookie `ag_session` missing | Sign in again, then reload the dashboard |

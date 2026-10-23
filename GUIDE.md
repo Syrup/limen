@@ -160,6 +160,14 @@ Both commands must print a version. If Docker is missing, install it first.
 
 The project lives in `~/.config/limen`. Copy the whole folder, including `auth/data/auth.db` and `auth/data/invite-secret`. The database holds your passkeys, invites, sessions, blocked ports, and audit log. The secret keeps existing invite links valid. If you also use offsite backup, copy `backup/keys/` from your password manager, not from the broken machine.
 
+If you are starting from a fresh clone instead of an existing install, create the deployment file first:
+
+```bash
+cp .env.example .env
+```
+
+Then set `LIMEN_DOMAIN` and `LIMEN_AUTH_HOST` in `.env`. Without them the containers refuse to start, which is deliberate.
+
 ### Step 3: start the containers
 
 ```bash
