@@ -5,7 +5,7 @@ const [command, id] = process.argv.slice(2);
 if (!command || command === "list") {
   const creds = loadCreds();
   if (creds.length === 0) {
-    console.log("Belum ada passkey terdaftar.");
+    console.log("No passkeys registered.");
     process.exit(0);
   }
   for (const cred of creds) {
@@ -21,14 +21,14 @@ if (command === "remove") {
   }
   const creds = loadCreds();
   if (!creds.some(c => c.id === id)) {
-    console.error(`passkey tidak ditemukan: ${id}`);
+    console.error(`passkey not found: ${id}`);
     process.exit(1);
   }
   if (creds.length === 1) {
-    console.warn("PERINGATAN: ini passkey terakhir. Setelah dihapus, tidak ada cara masuk sampai passkey baru didaftarkan lewat invite.");
+    console.warn("WARNING: this is the last passkey. After removal there is no way in until a new one is registered through an invite.");
   }
   removeCredential(id);
-  console.log(`Passkey ${id} dihapus. Semua sesi owner dicabut.`);
+  console.log(`Removed passkey ${id}. All owner sessions revoked.`);
   process.exit(0);
 }
 

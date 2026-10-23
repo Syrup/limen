@@ -51,7 +51,7 @@ Add a test for anything that changes behaviour. The invite lifecycle, session sc
 - Match the file you are editing. The codebase uses two spaces, double quotes, and no semicolons omitted by accident.
 - Comments explain why. Keep them to one or two lines.
 - Avoid new runtime dependencies. The image stays small on purpose, and the auth service runs on a 4 GiB machine.
-- Code, comments, commits, and docs are English. UI strings are Indonesian and English, both in `auth/src/ui.ts`.
+- Code, comments, commits, docs, and CLI output are English. Web pages are bilingual, Indonesian and English, both in `auth/src/ui.ts`.
 - Never commit `.env`, `auth/data`, `backup/env`, `backup/keys`, or the gloak binary. `.gitignore` covers them; check `git status` before pushing.
 
 ## Commits and pull requests
