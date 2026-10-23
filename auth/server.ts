@@ -4,7 +4,7 @@ import {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from "@simplewebauthn/server";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 import { join } from "node:path";
 import {
   loadCreds,
@@ -75,7 +75,11 @@ function parseCookies(req: Request): Record<string, string> {
   const out: Record<string, string> = {};
   for (const part of header.split(";")) {
     const [key, ...rest] = part.trim().split("=");
-    if (key) out[key] = decodeURIComponent(rest.join("="));
+    if (!key) continue;
+    const raw = rest.join("=");
+    // A malformed percent escape in a cookie must not take the whole request
+    // down. Browsers rarely send one, but a stale or hand-made cookie can.
+    try { out[key] = decodeURIComponent(raw); } catch { out[key] = raw; }
   }
   return out;
 }
@@ -187,16 +191,64 @@ function clearAuthCookies(): string[] {
   ];
 }
 
+const BASE_HEADERS: Record<string, string> = {
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "no-referrer",
+  "x-frame-options": "DENY",
+};
+
+function inlineScriptHashes(body: string): string[] {
+  const hashes: string[] = [];
+  for (const match of body.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
+    const [, attrs, code] = match;
+    if (/\ssrc=/.test(attrs) || code.trim() === "") continue;
+    hashes.push(`'sha256-${createHash("sha256").update(code).digest("base64")}'`);
+  }
+  return hashes;
+}
+
+function contentSecurityPolicy(body: string): string {
+  const scripts = ["'self'", ...inlineScriptHashes(body)];
+  // Alpine and htmx compile expressions with new Function(), so the dashboard
+  // needs 'unsafe-eval'. The login pages have no such dependency.
+  if (body.includes('src="/assets/alpine.min.js"') || body.includes('src="/assets/htmx.min.js"')) {
+    scripts.push("'unsafe-eval'");
+  }
+  return [
+    "default-src 'self'",
+    `script-src ${scripts.join(" ")}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "form-action 'self'",
+    "base-uri 'none'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
 function json(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", ...headers } });
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json", ...BASE_HEADERS, ...headers },
+  });
 }
 
 function html(body: string, status = 200, headers: Record<string, string> = {}): Response {
-  return new Response(body, { status, headers: { "content-type": "text/html; charset=utf-8", ...headers } });
+  return new Response(body, {
+    status,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "content-security-policy": contentSecurityPolicy(body),
+      ...BASE_HEADERS,
+      ...headers,
+    },
+  });
 }
 
 function redirect(url: string, status = 302, headers: Record<string, string> = {}): Response {
-  return new Response(null, { status, headers: { location: url, ...headers } });
+  return new Response(null, { status, headers: { location: url, ...BASE_HEADERS, ...headers } });
 }
 
 function reconstructNextUrl(req: Request): string {
@@ -230,7 +282,7 @@ async function serveAsset(path: string): Promise<Response> {
           ? "image/svg+xml"
           : "application/octet-stream";
   const cache = rel.endsWith(".woff2") ? "public, max-age=31536000, immutable" : "no-cache";
-  return new Response(file, { headers: { "content-type": type, "cache-control": cache } });
+  return new Response(file, { headers: { "content-type": type, "cache-control": cache, ...BASE_HEADERS } });
 }
 
 async function readBody(req: Request): Promise<Record<string, any>> {
@@ -253,7 +305,7 @@ function scopeAllows(scope: "all" | number[], port: number): boolean {
   return scope === "all" || scope.includes(port);
 }
 
-Bun.serve({
+export const server = Bun.serve({
   port: PORT,
   hostname: "127.0.0.1",
   async fetch(req) {
@@ -567,7 +619,7 @@ Bun.serve({
       }
     }
 
-    return new Response("Not found", { status: 404 });
+    return new Response("Not found", { status: 404, headers: BASE_HEADERS });
   },
 });
 
