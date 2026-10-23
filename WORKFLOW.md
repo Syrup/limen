@@ -48,12 +48,14 @@ Two containers, one compose project, both on the host network namespace. Nothing
 
 ```
 ~/.config/limen/
+  .gitignore                # keeps runtime state, secrets, and keys out of git
   docker-compose.yml        # proxy + auth services
   Caddyfile                 # dispatcher rules, mounted read-only
   GUIDE.md                  # non-technical guide
   WORKFLOW.md               # this file
   auth/
-    Dockerfile              # oven/bun:1-slim, production install
+    Dockerfile              # oven/bun:1-slim, production install, bundles the WebAuthn library
+    .dockerignore           # keeps data/ and node_modules out of the build context
     package.json
     bun.lock
     tsconfig.json
@@ -96,6 +98,8 @@ Two containers, one compose project, both on the host network namespace. Nothing
 ```
 
 The `auth/data` directory is bind-mounted into the container, so it survives rebuilds.
+
+`assets/webauthn.js` is not in the source tree. The image builds it from `@simplewebauthn/browser` during `docker compose build`, so the login page has no runtime dependency on a CDN.
 
 ## Request flow
 
@@ -252,6 +256,7 @@ Notes on the choices:
 - `flush_interval -1` disables response buffering, which keeps Vite HMR and SSE working.
 - `map` output uses `${pnum}`. The capture name must not collide with built-in placeholders, so `port` is avoided.
 - The port regex rejects leading zeros and caps at five digits. Ports above 65535 still match the pattern and fail upstream after login, which is harmless. That failure shows the same 503 page with the invalid port number.
+- The `log` block uses a filter encoder that replaces the `token` query value with `REDACTED`. It covers `request>uri` and `request>headers>Referer`, because the register page links back to `/login` and that navigation carries the token. Invite links stay out of the logs while the log still shows that a token was used.
 
 ## Cloudflare and DNS
 
@@ -334,9 +339,9 @@ What it does not protect against:
 - Anyone who obtains a live access link can use it until it expires or is revoked. Treat the link as a secret.
 - Anyone who obtains a live passkey link can register a passkey. Treat it as a secret and keep its duration short.
 - Malware on a device with an unlocked authenticator can use the passkey while the device is unlocked.
-- A stolen session cookie is valid until expiry; there is no per-session revocation list. Restarting auth clears all sessions.
+- A stolen session cookie is valid until expiry; there is no per-session revocation list. Sessions live in SQLite, so deleting rows or removing a passkey is how you cut them short.
 - Revoking an access invite does not invalidate sessions already issued; they end at their own expiry.
-- The auth service has no audit trail beyond stdout logs.
+- The audit table records logins, invite changes, port changes, and access redemptions, but nothing reads it yet beyond manual SQL.
 - The app behind a port is trusted. It shares the cookie namespace and can initiate same-site requests.
 - `ADMIN_DEV_OPEN=1` disables the owner check. It is inert when `NODE_ENV=production`, which the image sets.
 
@@ -531,6 +536,8 @@ Run these after any change.
 | Dashboard closed | `curl -s -o /dev/null -w "%{http_code} %{redirect_url}" https://auth.example.com/admin` | `302` to `/login?next=%2Fadmin` |
 | Fragments closed | `curl -s -o /dev/null -w "%{http_code}" https://auth.example.com/fragments/invites` | `404` |
 | Login page | `curl -s -o /dev/null -w "%{http_code}" https://auth.example.com/login` | `200` |
+| Passkey bundle | `curl -sI https://auth.example.com/assets/webauthn.js \| head -3` | `200`, `text/javascript` |
+| No CDN import | `curl -s https://auth.example.com/login \| grep -c esm.sh` | `0` |
 | Gate redirect | `curl -s -o /dev/null -w "%{http_code} %{redirect_url}" https://p4323.example.com/` | `302` to `https://auth.example.com/login?next=...` |
 | Invalid host | `curl -s -o /dev/null -w "%{http_code}" https://asalan.example.com/` | `404` |
 | Edge filter active | `curl -sI https://asalan.example.com/ \| grep -i x-host-filter` | `x-host-filter: blocked` |
@@ -564,12 +571,12 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 | `NotAllowedError` | User cancelled, or timeout | Browser console | Retry, keep the tab focused |
 | `InvalidStateError` on registration | Credential already registered for this RP | `bun run passkey.ts list` | Expected; log in instead of registering |
 | `403` on register | Missing, used, revoked, or expired invite | Check the dashboard or the `invites` table | Create a new passkey invite |
-| `429` | Rate limit, 30 per minute per IP | Auth logs | Wait 60 seconds |
+| `429` | Rate limit, 60 requests per minute per IP on `/api/*` | Auth logs | Wait 60 seconds |
 | `1033` or `521`/`522` from Cloudflare | Tunnel disconnected | `systemctl --user status cloudflared` | Restart the unit, check outbound network |
 | TLS handshake failure | Two-level hostname, or wildcard record missing | `openssl s_client -connect <host>:443 -servername <host>` | Use one-level names, restore the CNAME |
 | 404 with body `Not found` | Worker rejected the host at the edge | `curl -sI https://<host>/ \| grep -i x-host-filter` shows `blocked` | Use `p<port>.example.com`, `auth.example.com`, or the apex |
 | `403 Blocked request. This host is not allowed.` | Someone removed `header_up Host localhost` | Caddyfile | Restore the line |
-| Login button inert | CDN import blocked | Browser console shows failed module fetch | Allow `esm.sh` or bundle the library |
+| Login button inert | Passkey bundle missing from the image, or an extension blocks WebAuthn | Console shows a failed `/assets/webauthn.js` request | `docker compose up -d --build auth`, then try a clean profile |
 | Auth loop after rebuild | Cookie rejected or clock skew | Browser devtools, `sessions` table | Clear site data, sign in again |
 | Credentials unreadable after migration | UID mismatch on bind mount | `ls -ln auth/data` | Fix ownership, or adjust `user:` in compose |
 
@@ -582,12 +589,11 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 - SQLite has one writer. At this traffic level that is fine, but it rules out multiple auth replicas without moving to Postgres.
 - The dispatcher only serves HTTP. TCP services such as databases need separate tunnel rules.
 - The wildcard DNS record makes every `*.example.com` name resolve. The Worker blocks junk hosts at the edge and Caddy blocks them again, so no app is touched, but DNS still answers for names that serve nothing.
-- The browser library loads from `esm.sh` at runtime. Offline or restricted networks break the login page.
 - The Worker route covers subdomains only. The apex is allowed by the allowlist but not yet routed through the filter.
 - No compose healthcheck. A failed auth container shows up as 502 on the next request.
 - Revoking an access invite deletes its guest sessions immediately. Removing a passkey deletes owner sessions.
 - The backup tool is alpha. Keep an independent copy until it reaches beta.
-- The dashboard is one owner. There is no multi-user, roles, or audit log beyond stdout.
+- The dashboard is one owner. There is no multi-user support or roles, and the audit table has no screen of its own.
 - `admin-ui` needs Node to rebuild the Tailwind CSS. The runtime does not.
 - `ADMIN_DEV_OPEN` exists for local UI testing and is inert in production. Do not set `NODE_ENV` to anything other than `production` in the deployed image.
 

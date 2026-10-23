@@ -297,7 +297,7 @@ The `tunnel info` output should list active connections. If it lists none, the m
 
 ### Login page loads but the button does nothing
 
-The page loads a small library from `esm.sh`. If that CDN is blocked by your network or an extension, the button cannot work. Open the browser console; you will see a failed import. Allow `esm.sh`, or ask for the library to be bundled locally.
+The passkey library ships inside the container, so a blocked CDN cannot cause this. If the button still does nothing, open the browser console. A failed request for `/assets/webauthn.js` means the image was built without the bundle step, so rebuild with `docker compose up -d --build auth`. An extension that blocks WebAuthn usually fails quietly, so try a clean browser profile before rebuilding.
 
 ### Session still active after a restart
 
