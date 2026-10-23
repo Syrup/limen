@@ -1,0 +1,43 @@
+services:
+  proxy:
+    image: caddy:2.11.4-alpine
+    container_name: limen
+    restart: unless-stopped
+    network_mode: host
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    volumes:
+      - /home/keraki/.config/limen/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /home/keraki/.config/limen/errors:/srv/errors:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - auth
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+    mem_limit: 64m
+
+  auth:
+    build: ./auth
+    image: limen-core:latest
+    container_name: limen-core
+    restart: unless-stopped
+    network_mode: host
+    user: "1000:1000"
+    environment:
+      PORT: "8099"
+      TZ: "Asia/Jakarta"
+    volumes:
+      - /home/keraki/.config/limen/auth/data:/app/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+    mem_limit: 128m
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,13 @@
+[Unit]
+Description=gloak backup for Limen
+Wants=network-online.target
+After=network-online.target
+OnFailure=gloak-backup-alert.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/limen/backup/env
+ExecStart=%h/.config/limen/backup/backup.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

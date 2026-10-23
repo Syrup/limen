@@ -1,0 +1,21 @@
+@import "tailwindcss" source(none);
+@source "../auth";
+
+@theme {
+  --font-sans: "Satoshi", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-canvas: #0d0f0e;
+  --color-panel: #141716;
+  --color-field: #181c1a;
+  --color-line: #262b29;
+  --color-line-strong: #333a37;
+  --color-ink: #e8eae8;
+  --color-muted: #97a19c;
+  --color-faint: #8b958f;
+  --color-mint: #a7d8c0;
+  --color-danger: #f0b3b3;
+}
+
+@layer base {
+  html { color-scheme: dark; }
+  [x-cloak] { display: none !important; }
+}

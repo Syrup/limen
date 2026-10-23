@@ -1,0 +1,7 @@
+[Unit]
+Description=Alert for failed gloak backup
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/limen/backup/env
+ExecStart=%h/.config/limen/backup/alert.sh

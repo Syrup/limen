@@ -1,0 +1,13 @@
+# runtime state: passkeys, invites, sessions, signing secret
+auth/data/
+
+# backup secrets and keys
+backup/env
+backup/keys/
+
+# build inputs that are not source
+node_modules/
+admin-ui/package-lock.json
+
+# tooling caches
+worker/.wrangler/

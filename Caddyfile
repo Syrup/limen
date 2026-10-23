@@ -1,0 +1,63 @@
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+# Dispatcher: p<port>.example.com -> localhost:<port> (gate via auth-gateway)
+#            auth.example.com      -> auth-gateway (passkey login/register)
+:8088 {
+	bind 127.0.0.1
+
+	map {http.request.host} {target_port} {
+		~^p(?P<pnum>[1-9][0-9]{0,4})\.keraki\.tech$ ${pnum}
+		default none
+	}
+
+	@auth host auth.example.com
+	handle @auth {
+		reverse_proxy localhost:8099 {
+			flush_interval -1
+		}
+	}
+
+	# Harus berupa handle terpisah: forward_auth diurutkan sebelum respond,
+	# jadi host tidak valid akan kena gate login kalau digabung.
+	@invalid vars {target_port} none
+	handle @invalid {
+		respond "Subdomain tidak valid. Format: https://p<port>.example.com" 404
+	}
+
+	handle {
+		forward_auth localhost:8099 {
+			uri /verify
+			header_up X-Port {target_port}
+		}
+
+		reverse_proxy localhost:{target_port} {
+			header_up Host localhost
+			flush_interval -1
+		}
+	}
+
+	handle_errors {
+		@502 expression {http.error.status_code} == 502
+		handle @502 {
+			@en header_regexp Accept-Language (?i)^\s*en
+			header Content-Type "text/html; charset=utf-8"
+			templates {
+				root /srv/errors
+			}
+			# 503, bukan 502: Cloudflare mengganti body 502 dari origin dengan
+			# halaman bawaannya sendiri. Status 503 diteruskan apa adanya.
+			respond @en "{{include \"502.en.html\"}}" 503
+			respond "{{include \"502.html\"}}" 503
+		}
+		respond "{http.error.status_code}" {http.error.status_code}
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
