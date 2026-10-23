@@ -49,7 +49,7 @@ Cloudflare routes same-zone subrequests to the zone origin, ignoring Workers map
 ## Verify after deploy
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://asalan.example.com/   # 404, body "Not found"
+curl -s -o /dev/null -w "%{http_code}\n" https://unknown.example.com/   # 404, body "Not found"
 curl -s -o /dev/null -w "%{http_code}\n" https://pabc.example.com/     # 404, body "Not found"
 curl -s -o /dev/null -w "%{http_code}\n" https://p00.example.com/      # 404, body "Not found"
 curl -s -o /dev/null -w "%{http_code}\n" https://p4323.example.com/    # 302 to auth login
@@ -59,10 +59,10 @@ curl -s https://auth.example.com/health                                # {"ok":t
 To prove the Worker answered and not Caddy, check the header:
 
 ```bash
-curl -sI https://asalan.example.com/ | grep -i x-host-filter
+curl -sI https://unknown.example.com/ | grep -i x-host-filter
 ```
 
-A `blocked` value means the request stopped at the edge. No header means it reached Caddy, which also returns 404 for the same host. Compare the body: Caddy sends `Subdomain tidak valid...`, the Worker sends `Not found`.
+A `blocked` value means the request stopped at the edge. No header means it reached Caddy, which also returns 404 for the same host. Compare the body: Caddy sends a plain text explanation of the expected format, the Worker sends `Not found`.
 
 WebSocket passthrough matters for Vite HMR. After deploy, open the dev server through a port host and confirm hot reload still works. The upgrade request should pass through the Worker unchanged.
 

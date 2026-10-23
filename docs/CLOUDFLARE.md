@@ -74,7 +74,7 @@ The Worker fails closed. If `[vars]` still contains the example domain, every re
 Verify the filter:
 
 ```bash
-curl -sI https://asalan.example.com/ | grep -i x-host-filter   # x-host-filter: blocked
+curl -sI https://unknown.example.com/ | grep -i x-host-filter   # x-host-filter: blocked
 curl -s -o /dev/null -w "%{http_code}\n" https://pabc.example.com/   # 404
 curl -s -o /dev/null -w "%{http_code}\n" https://p4323.example.com/  # 302
 ```
@@ -126,7 +126,7 @@ Enable the timer only after the drill passes, and copy `backup/keys/identity.txt
 | Login page | `curl -s -o /dev/null -w "%{http_code}" https://auth.example.com/login` | `200` |
 | Closed dashboard | `curl -s -o /dev/null -w "%{http_code}" https://auth.example.com/admin` | `302` |
 | Port gate | `curl -s -o /dev/null -w "%{http_code}" https://p4323.example.com/` | `302` |
-| Edge filter | `curl -sI https://asalan.example.com/ \| grep -i x-host-filter` | `x-host-filter: blocked` |
+| Edge filter | `curl -sI https://unknown.example.com/ \| grep -i x-host-filter` | `x-host-filter: blocked` |
 | Tunnel | `cloudflared tunnel info limen` | at least one connection |
 | Containers | `docker compose ps` | both `healthy` |
 

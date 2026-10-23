@@ -300,8 +300,6 @@ The domain scope is what makes one login cover every port. The trade-off is that
 
     @invalid vars {target_port} none
     handle @invalid {
-        @id header_regexp Accept-Language (?i)^\s*id
-        respond @id "Subdomain tidak valid..." 404
         respond "Invalid subdomain..." 404
     }
 
@@ -325,6 +323,7 @@ Notes on the choices:
 - The domain lands inside a regex literally, so its dots match any character. A stray hostname never reaches Caddy because the tunnel ingress and the edge Worker both key on the real zone.
 - `bind 127.0.0.1` keeps the listener off the LAN interface.
 - `header_up X-Port` passes the extracted port to the auth service. Without it, `/verify` cannot apply per-port scopes or the blocked-port list.
+- The live file also answers Indonesian browsers from the same block, with an `@id` matcher and a second `respond`. The snippet above shows only the English branch.
 - The invalid check sits in its own `handle` block. Caddy sorts `forward_auth` ahead of `respond` inside a single branch, so combining them makes junk hosts hit the login gate and return 302 instead of 404. Separate `handle` blocks are mutually exclusive and keep the check first.
 - `reverse_proxy localhost:<port>` lets Go resolve `localhost` to both `127.0.0.1` and `::1`, so IPv4-only and IPv6-only backends both work. Listing two upstreams instead round-robins and fails half the time.
 - `header_up Host localhost` satisfies Astro and Vite host checks.
@@ -635,8 +634,8 @@ Run these after any change.
 | Worker tests | `cd worker && bun test` | `4 pass, 0 fail` |
 | Containers healthy | `docker compose ps` | both `healthy` |
 | Gate redirect | `curl -s -o /dev/null -w "%{http_code} %{redirect_url}" https://p4323.example.com/` | `302` to `https://auth.example.com/login?next=...` |
-| Invalid host | `curl -s -o /dev/null -w "%{http_code}" https://asalan.example.com/` | `404` |
-| Edge filter active | `curl -sI https://asalan.example.com/ \| grep -i x-host-filter` | `x-host-filter: blocked` |
+| Invalid host | `curl -s -o /dev/null -w "%{http_code}" https://unknown.example.com/` | `404` |
+| Edge filter active | `curl -sI https://unknown.example.com/ \| grep -i x-host-filter` | `x-host-filter: blocked` |
 | Non-numeric port host | `curl -s -o /dev/null -w "%{http_code}" https://pabc.example.com/` | `404` |
 | Leading zero | `curl -s -o /dev/null -w "%{http_code}" https://p00.example.com/` | `404` |
 | Dead port with session | browser check | `503` with the custom page and port |
@@ -656,9 +655,9 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 |---|---|---|---|
 | `503` from the proxy with a custom page | Backend not listening | Page shows the port, `ss -tln \| grep ':<port>'` | Start the app, or correct the port |
 | `502` on auth host too | Auth container down or crashed | `docker compose logs --tail=50 auth` | Fix the error, `docker compose up -d auth` |
-| `404 Invalid subdomain` (Indonesian: `Subdomain tidak valid`) | Host does not match `^p[1-9][0-9]{0,4}\.example\.com$` | Compare the URL | Use `p<port>.example.com`, one level deep |
-| `403 Port unavailable` (Indonesian: `Port ini tidak tersedia`) | Port is blocked in the dashboard | `docker compose exec auth bun -e '...'` or check the dashboard | Toggle it back on in the `Port` panel |
-| `403 Port outside your access` (Indonesian: `Port ini di luar aksesmu`) | Guest scope does not cover the port | Check the invite scope in the dashboard | Create a link with the right ports |
+| `404 Invalid subdomain` | Host does not match `^p[1-9][0-9]{0,4}\.example\.com$` | Compare the URL | Use `p<port>.example.com`, one level deep |
+| `403 Port unavailable` | Port is blocked in the dashboard | `docker compose exec auth bun -e '...'` or check the dashboard | Toggle it back on in the `Port` panel |
+| `403 Port outside your access` | Guest scope does not cover the port | Check the invite scope in the dashboard | Create a link with the right ports |
 | `404` on `/fragments/*` | No owner session, or the session expired | Cookie `ag_session` missing | Sign in again, then reload the dashboard |
 | Login loops | Cookie rejected | Browser devtools, Application, Cookies | Use `https`, allow cookies, clear site data |
 | Redirect lands on `http://` | `X-Forwarded-Proto` from cloudflared is `http` | Inspect `Location` header | `reconstructNextUrl` forces `https`; keep it that way |

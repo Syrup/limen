@@ -9,7 +9,7 @@ async function statusFor(host, environment = env) {
 }
 
 test("blocks hosts outside the zone", async () => {
-  expect(await statusFor("asalan.example.com")).toBe(404);
+  expect(await statusFor("unknown.example.com")).toBe(404);
   expect(await statusFor("pabc.example.com")).toBe(404);
   expect(await statusFor("p00.example.com")).toBe(404);
   expect(await statusFor("evil.test")).toBe(404);

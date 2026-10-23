@@ -28,7 +28,7 @@ This is the whole routine.
 
 1. Start your server on a port. Example: `astro dev --port 4323`.
 2. Open `https://p4323.example.com`.
-3. First visit in a new browser: click `Sign in with passkey` (`Masuk dengan passkey` in an Indonesian browser), approve with your fingerprint or face.
+3. First visit in a new browser: click `Sign in with passkey`, approve with your fingerprint or face.
 4. You are in. Later visits in the same browser skip the login because the browser keeps the session.
 
 The link never changes. Port 4323 is always `p4323`, port 7000 is always `p7000`.
@@ -48,7 +48,7 @@ The address is `https://p` followed by the port number, then `.example.com`.
 
 Port must be 2 to 5 digits. The number cannot start with 0, so `p04323` and `p00` are rejected. Addresses like `https://4323.example.com` or `https://p.example.com` do not work either. You will get a 404 with a short explanation, and the app behind the port never receives the request.
 
-Two kinds of 404 exist. A page saying `Not found` comes from Cloudflare, which rejects the address before it reaches the server. A page saying `Invalid subdomain` (or `Subdomain tidak valid` in an Indonesian browser) comes from the server itself. Both mean the address is wrong.
+Two kinds of 404 exist. A page saying `Not found` comes from Cloudflare, which rejects the address before it reaches the server. A page saying `Invalid subdomain` comes from the server itself. Both mean the address is wrong.
 
 ### Logging out
 
@@ -70,9 +70,9 @@ The dashboard has three parts:
 
 Use this to give someone access for a limited time without giving them a passkey.
 
-1. In the dashboard, choose `Temporary access` (`Akses sementara` in an Indonesian browser).
+1. In the dashboard, choose `Temporary access`.
 2. Set a label, a duration, and a unit from minutes to months. The maximum is 12 months. There is no forever option.
-3. Choose `All ports` (`Semua port`) or list specific ports, for example `4322, 4323`.
+3. Choose `All ports` or list specific ports, for example `4322, 4323`.
 4. Create the link and send it to the person.
 
 When they open it, the server creates a guest session in their browser and shows the ports they can open. The link keeps working until it is revoked or expires, and the guest session ends when the invite does. Revoke it from the dashboard when it is no longer needed.
@@ -85,7 +85,7 @@ You can register more than one passkey, for example your phone and your laptop.
 
 1. In the dashboard, choose `Passkey`.
 2. Set a duration and create the link.
-3. Open the link on the device you want to add, click `Register passkey` (`Daftarkan passkey`), and approve.
+3. Open the link on the device you want to add, click `Register passkey`, and approve.
 
 The link works once. After the passkey is registered, the link stops working.
 
@@ -224,7 +224,7 @@ If it still loops, clear site data for `example.com` in the browser and try once
 
 ### 503 Service Unavailable
 
-You will see a page from the proxy itself, usually titled "Service is not running" ("Tidak ada layanan di balik alamat ini" in an Indonesian browser) and showing the port, for example `Port 4323`. That means the login worked and the proxy could not reach the app. The old Cloudflare error page is replaced by this one.
+You will see a page from the proxy itself, usually titled "Service is not running" and showing the port, for example `Port 4323`. That means the login worked and the proxy could not reach the app. The old Cloudflare error page is replaced by this one.
 
 The status is 503, not 502. Cloudflare replaces 502 bodies from the origin with its own page, so the proxy uses 503 to make the custom page reach you.
 
