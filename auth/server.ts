@@ -25,6 +25,8 @@ import {
   getSession,
   deleteSession,
   cleanupSessions,
+  trimInviteSessions,
+  pruneAudit,
   addAudit,
   SYSTEM_PORTS,
   durationMs,
@@ -60,6 +62,8 @@ const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 60;
 const MAX_COOKIE_AGE = 400 * 24 * 60 * 60;
+const MAX_GUEST_SESSIONS = 20;
+const AUDIT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const DEV_OPEN = process.env.NODE_ENV !== "production" && process.env.ADMIN_DEV_OPEN === "1";
 
 type Challenge = { challenge: string; type: "reg" | "auth"; expires: number };
@@ -84,14 +88,15 @@ function parseCookies(req: Request): Record<string, string> {
   return out;
 }
 
+const AUTH_ORIGIN = "https://auth.example.com";
+
+/**
+ * WebAuthn ceremonies and admin writes only ever run on the auth host. Accepting
+ * any *.example.com origin would let a proxied dev app forge admin POSTs with
+ * the shared session cookie.
+ */
 function isAllowedOrigin(origin: string): boolean {
-  try {
-    const url = new URL(origin);
-    if (url.protocol !== "https:") return false;
-    return url.hostname === "example.com" || url.hostname.endsWith(".example.com");
-  } catch {
-    return false;
-  }
+  return origin === AUTH_ORIGIN;
 }
 
 function originFromRequest(req: Request): string {
@@ -130,8 +135,14 @@ function clientIp(req: Request): string {
   return req.headers.get("cf-connecting-ip") || "local";
 }
 
+function sweepRateBuckets(): void {
+  const now = Date.now();
+  for (const [key, bucket] of rateBuckets) if (bucket.reset < now) rateBuckets.delete(key);
+}
+
 function rateLimited(req: Request): boolean {
   const now = Date.now();
+  if (rateBuckets.size > 2048) sweepRateBuckets();
   const key = clientIp(req);
   const bucket = rateBuckets.get(key);
   if (!bucket || bucket.reset < now) {
@@ -200,7 +211,8 @@ const BASE_HEADERS: Record<string, string> = {
 function inlineScriptHashes(body: string): string[] {
   const hashes: string[] = [];
   for (const match of body.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
-    const [, attrs, code] = match;
+    const attrs = match[1] ?? "";
+    const code = match[2] ?? "";
     if (/\ssrc=/.test(attrs) || code.trim() === "") continue;
     hashes.push(`'sha256-${createHash("sha256").update(code).digest("base64")}'`);
   }
@@ -259,7 +271,10 @@ function reconstructNextUrl(req: Request): string {
 
 function adminOriginOk(req: Request): boolean {
   const origin = req.headers.get("origin");
-  return !origin || isAllowedOrigin(origin);
+  if (origin) return isAllowedOrigin(origin);
+  // Browsers send Origin on POST. A request without it is a CLI client, unless
+  // it carries Sec-Fetch-Site, which every browser sends.
+  return req.headers.get("sec-fetch-site") === null;
 }
 
 async function serveAsset(path: string): Promise<Response> {
@@ -316,6 +331,21 @@ export const server = Bun.serve({
     const api = UI[lang].api;
 
     if (path.startsWith("/assets/")) return serveAsset(path);
+
+    // /verify is deliberately exempt: every request to a port host calls it, so
+    // a per-minute cap there would break normal page loads.
+    const sensitive =
+      path.startsWith("/api/") ||
+      path === "/access" ||
+      (path.startsWith("/admin/") && req.method === "POST");
+
+    if (sensitive && rateLimited(req)) {
+      if (path.startsWith("/api/")) return json({ error: api.rateLimited }, 429);
+      return new Response(api.rateLimited, {
+        status: 429,
+        headers: { "content-type": "text/plain; charset=utf-8", ...BASE_HEADERS },
+      });
+    }
 
     if (path === "/verify") {
       const port = Number(req.headers.get("x-port") || "");
@@ -374,8 +404,6 @@ export const server = Bun.serve({
       }
 
       const expires = Date.parse(invite.expiresAt);
-      const token = createSession("guest", invite.scope, expires, invite.id);
-      auditRequest(req, "guest", "access_redeem", invite.id);
 
       const wanted = safeNext(url.searchParams.get("next"));
       let target = "/access/granted";
@@ -384,6 +412,17 @@ export const server = Bun.serve({
       } else if (invite.scope !== "all" && invite.scope.length === 1) {
         target = `https://p${invite.scope[0]}.example.com/`;
       }
+
+      const existing = getGuest(req);
+      if (existing && existing.inviteId === invite.id) {
+        // Opening the link again in the same browser keeps the session instead
+        // of writing another row every time.
+        return redirect(target, 302);
+      }
+
+      const token = createSession("guest", invite.scope, expires, invite.id);
+      trimInviteSessions(invite.id, MAX_GUEST_SESSIONS);
+      auditRequest(req, "guest", "access_redeem", invite.id);
 
       return redirect(target, 302, { "set-cookie": guestCookie(token, expires) });
     }
@@ -404,8 +443,6 @@ export const server = Bun.serve({
     }
 
     if (path === "/health") return json({ ok: true });
-
-    if (path.startsWith("/api/") && rateLimited(req)) return json({ error: api.rateLimited }, 429);
 
     // --- admin fragments ---
     if ((path === "/fragments/invites" || path === "/fragments/ports") && req.method === "GET") {
@@ -541,7 +578,22 @@ export const server = Bun.serve({
         });
         if (!verification.verified) return json({ error: api.verifyFailed }, 401);
 
-        updateCredentialCounter(cred.id, verification.authenticationInfo.newCounter);
+        // A counter that goes backwards means the credential may have been
+        // cloned. Authenticators that never increment report 0, so only enforce
+        // this once a credential has reported a real counter.
+        const nextCounter = verification.authenticationInfo.newCounter;
+        if (cred.counter > 0 && nextCounter <= cred.counter) {
+          addAudit({
+            actor: "owner",
+            action: "login_counter_regression",
+            target: cred.id,
+            ip: clientIp(req),
+            ua: req.headers.get("user-agent") || undefined,
+          });
+          return json({ error: api.verifyFailed }, 401);
+        }
+
+        updateCredentialCounter(cred.id, nextCounter);
 
         const token = createSession("owner", "all", Date.now() + OWNER_TTL_MS);
         auditRequest(req, "owner", "login");
@@ -624,7 +676,12 @@ export const server = Bun.serve({
 });
 
 cleanupSessions();
-setInterval(cleanupSessions, 10 * 60_000).unref?.();
+pruneAudit(Date.now() - AUDIT_RETENTION_MS);
+setInterval(() => {
+  cleanupSessions();
+  pruneAudit(Date.now() - AUDIT_RETENTION_MS);
+  sweepRateBuckets();
+}, 10 * 60_000).unref?.();
 
 console.log(`Limen listening on 127.0.0.1:${PORT}`);
 console.log(`RP_ID=${RP_ID} ADMIN_DEV_OPEN=${DEV_OPEN ? "on" : "off"}`);

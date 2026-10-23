@@ -350,6 +350,20 @@ export function cleanupSessions(): void {
   db.query("DELETE FROM sessions WHERE expires_at <= ?").run(Date.now());
 }
 
+/**
+ * Keeps the newest guest sessions for one invite. A reusable access link can be
+ * opened from unlimited browsers, so without a cap the sessions table grows
+ * with every open.
+ */
+export function trimInviteSessions(inviteId: string, keep: number): void {
+  db.query(`DELETE FROM sessions
+    WHERE kind = 'guest' AND invite_id = ? AND token_hash NOT IN (
+      SELECT token_hash FROM sessions
+      WHERE kind = 'guest' AND invite_id = ?
+      ORDER BY created_at DESC LIMIT ?
+    )`).run(inviteId, inviteId, keep);
+}
+
 export function listSessions(): Array<{ kind: SessionKind; scope: "all" | number[]; expires: number; inviteId?: string }> {
   const rows = db.query("SELECT kind, scope, expires_at, invite_id FROM sessions ORDER BY expires_at").all() as any[];
   return rows.map(row => ({
@@ -375,6 +389,11 @@ export function addAudit(input: {
 
 export function listAudit(limit = 50): Array<{ at: number; actor: string; action: string; target?: string; ip?: string }> {
   return db.query("SELECT at, actor, action, target, ip FROM audit_log ORDER BY id DESC LIMIT ?").all(limit) as any[];
+}
+
+/** Drops audit rows older than the retention window. */
+export function pruneAudit(before: number): void {
+  db.query("DELETE FROM audit_log WHERE at < ?").run(before);
 }
 
 // --- one-time import from the JSON files ---
