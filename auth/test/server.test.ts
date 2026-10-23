@@ -3,8 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, expect, test } from "bun:test";
 
-// Each run gets its own database, its own invite secret, and a port that the
-// live service never uses.
 process.env.AUTH_DATA_DIR = mkdtempSync(join(tmpdir(), "limen-server-test-"));
 process.env.PORT = "18099";
 process.env.LIMEN_DOMAIN = "limen.test";

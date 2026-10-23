@@ -4,10 +4,6 @@
 	persist_config off
 }
 
-# Dispatcher: p<port>.{$LIMEN_DOMAIN} -> localhost:<port> (gate via auth-gateway)
-#            {$LIMEN_AUTH_HOST}      -> auth-gateway (passkey login/register)
-# LIMEN_DOMAIN and LIMEN_AUTH_HOST come from the environment. Compose refuses to
-# start without them, so there is no default that could silently be wrong.
 :{$LIMEN_PROXY_PORT:8088} {
 	bind {$LIMEN_BIND:127.0.0.1}
 
@@ -23,9 +19,6 @@
 		}
 	}
 
-	# This has to be its own handle block. Caddy sorts forward_auth ahead of
-	# respond inside one branch, so combining them sends junk hosts to the login
-	# gate and returns 302 instead of 404.
 	@invalid vars {target_port} none
 	handle @invalid {
 		@id header_regexp Accept-Language (?i)^\s*id
@@ -53,8 +46,6 @@
 			templates {
 				root /srv/errors
 			}
-			# 503 instead of 502: Cloudflare replaces a 502 body with its own page,
-			# while a 503 body passes through unchanged.
 			respond @id "{{include \"502.html\"}}" 503
 			respond "{{include \"502.en.html\"}}" 503
 		}
@@ -66,13 +57,9 @@
 		format filter {
 			wrap console
 			fields {
-				# Invite tokens live in the query string. Keep them out of the logs
-				# while still showing that a token was present.
 				request>uri query {
 					replace token REDACTED
 				}
-				# The register page links back to /login, so the token also shows
-				# up in the Referer header of that navigation.
 				request>headers>Referer query {
 					replace token REDACTED
 				}

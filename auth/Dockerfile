@@ -1,5 +1,3 @@
-# Frontend assets. Tailwind, htmx, Alpine, and the browser WebAuthn library are
-# bundled here, so the runtime image needs neither Node nor those packages.
 FROM node:22-alpine AS web
 WORKDIR /web
 COPY web/package.json web/package-lock.json ./
@@ -16,7 +14,6 @@ COPY auth/package.json auth/bun.lock ./
 RUN bun install --production --frozen-lockfile
 
 COPY auth/src ./src
-# Static files first (fonts, fonts.css), then the bundle built in the web stage.
 COPY auth/assets ./assets
 COPY --from=web /auth/assets ./assets
 

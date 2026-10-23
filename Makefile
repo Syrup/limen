@@ -1,6 +1,5 @@
 .PHONY: up down logs test test-auth test-worker typecheck assets web-install invite backup restore-drill config
 
-# Start everything and rebuild the auth image.
 up:
 	docker compose up -d --build
 
@@ -10,7 +9,6 @@ down:
 logs:
 	docker compose logs -f --tail=100
 
-# Both suites. Neither touches the live database.
 test: test-auth test-worker
 
 test-auth:
@@ -22,7 +20,6 @@ test-worker:
 typecheck:
 	cd auth && bun run typecheck
 
-# Rebuild the dashboard assets into auth/assets.
 assets:
 	cd web && npm run build
 
@@ -38,7 +35,6 @@ backup:
 restore-drill:
 	cd backup && ./restore-drill.sh
 
-# Validate the compose file and the Caddyfile without restarting anything.
 config:
 	docker compose config --quiet
 	docker compose exec -T proxy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

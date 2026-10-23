@@ -90,8 +90,6 @@ function parseCookies(req: Request): Record<string, string> {
     const [key, ...rest] = part.trim().split("=");
     if (!key) continue;
     const raw = rest.join("=");
-    // A malformed percent escape in a cookie must not take the whole request
-    // down. Browsers rarely send one, but a stale or hand-made cookie can.
     try { out[key] = decodeURIComponent(raw); } catch { out[key] = raw; }
   }
   return out;
@@ -116,7 +114,6 @@ function originFromRequest(req: Request): string {
 
 function safeNext(next: unknown): string {
   if (typeof next !== "string" || next === "") return "/";
-  // Internal paths only, e.g. /admin. Reject //host and backslashes.
   if (next.startsWith("/") && !next.startsWith("//") && !next.includes("\\")) return next;
   try {
     const url = new URL(next);
@@ -228,8 +225,6 @@ function inlineScriptHashes(body: string): string[] {
 
 function contentSecurityPolicy(body: string): string {
   const scripts = ["'self'", ...inlineScriptHashes(body)];
-  // Alpine and htmx compile expressions with new Function(), so the dashboard
-  // needs 'unsafe-eval'. The login pages have no such dependency.
   if (body.includes('src="/assets/vendor.js"')) {
     scripts.push("'unsafe-eval'");
   }
@@ -279,8 +274,6 @@ function reconstructNextUrl(req: Request): string {
 function adminOriginOk(req: Request): boolean {
   const origin = req.headers.get("origin");
   if (origin) return isAllowedOrigin(origin);
-  // Browsers send Origin on POST. A request without it is a CLI client, unless
-  // it carries Sec-Fetch-Site, which every browser sends.
   return req.headers.get("sec-fetch-site") === null;
 }
 
@@ -340,8 +333,6 @@ export const server = Bun.serve({
 
     if (path.startsWith("/assets/")) return serveAsset(path);
 
-    // /verify is deliberately exempt: every request to a port host calls it, so
-    // a per-minute cap there would break normal page loads.
     const sensitive =
       path.startsWith("/api/") ||
       path === "/access" ||
@@ -423,8 +414,6 @@ export const server = Bun.serve({
 
       const existing = getGuest(req);
       if (existing && existing.inviteId === invite.id) {
-        // Opening the link again in the same browser keeps the session instead
-        // of writing another row every time.
         return redirect(target, 302);
       }
 
@@ -443,7 +432,6 @@ export const server = Bun.serve({
 
     if (path === "/admin" && req.method === "GET") {
       if (!isOwner(req)) {
-        // Jangan konfirmasi keberadaan dashboard ke sesi tamu.
         if (getGuest(req)) return new Response("Not found", { status: 404 });
         return redirect("/login?next=%2Fadmin", 302);
       }
@@ -452,7 +440,6 @@ export const server = Bun.serve({
 
     if (path === "/health") return json({ ok: true });
 
-    // --- admin fragments ---
     if ((path === "/fragments/invites" || path === "/fragments/ports") && req.method === "GET") {
       if (!isOwner(req)) return new Response("Not found", { status: 404 });
       return html(path.endsWith("invites") ? renderInvitesFragment(lang) : renderPortsFragment(lang));
@@ -540,8 +527,6 @@ export const server = Bun.serve({
       });
     }
 
-
-    // --- passkey login ---
     if (path === "/api/webauthn/login/options" && req.method === "POST") {
       const creds = loadCreds();
       if (creds.length === 0) return json({ error: t("api.noPasskey") }, 400);
@@ -587,9 +572,6 @@ export const server = Bun.serve({
         });
         if (!verification.verified) return json({ error: t("api.verifyFailed") }, 401);
 
-        // A counter that goes backwards means the credential may have been
-        // cloned. Authenticators that never increment report 0, so only enforce
-        // this once a credential has reported a real counter.
         const nextCounter = verification.authenticationInfo.newCounter;
         if (cred.counter > 0 && nextCounter <= cred.counter) {
           addAudit({
@@ -612,7 +594,6 @@ export const server = Bun.serve({
       }
     }
 
-    // --- passkey registration ---
     if (path === "/api/webauthn/register/options" && req.method === "POST") {
       const creds = loadCreds();
       const invite = findByToken(url.searchParams.get("token") || "");

@@ -312,8 +312,6 @@ export function listeningPorts(): number[] {
   return [...ports].sort((a, b) => a - b);
 }
 
-// --- sessions ---
-
 export type SessionKind = "owner" | "guest";
 export type Session = { kind: SessionKind; scope: "all" | number[]; expires: number; inviteId?: string };
 
@@ -372,8 +370,6 @@ export function listSessions(): Array<{ kind: SessionKind; scope: "all" | number
   }));
 }
 
-// --- audit ---
-
 export function addAudit(input: {
   actor: string;
   action: string;
@@ -393,8 +389,6 @@ export function listAudit(limit = 50): Array<{ at: number; actor: string; action
 export function pruneAudit(before: number): void {
   db.query("DELETE FROM audit_log WHERE at < ?").run(before);
 }
-
-// --- one-time import from the JSON files ---
 
 function migrateLegacy(): void {
   const credsCount = (db.query("SELECT COUNT(*) AS n FROM credentials").get() as any).n;
