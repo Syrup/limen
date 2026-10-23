@@ -49,9 +49,10 @@ Add a test for anything that changes behaviour. The invite lifecycle, session sc
 ## Adding a language
 
 1. Copy `auth/src/i18n/en.json` to `auth/src/i18n/<code>.json` and translate the values. Leave the keys alone.
-2. Open `auth/src/i18n/index.ts`, import the file, add it to `resources`, and add the code to `INTL_LOCALE` and `HTML_LANG` so dates and `<html lang>` are correct.
-3. Run `make test`. One test compares every locale against English and fails when a key is missing or extra.
-4. Optional: copy `proxy/errors/502.en.html` to `502.<code>.html` and add one matcher plus one `respond` line to the invalid-host block and the 502 block in `proxy/Caddyfile`.
+2. Run `make test`. One test compares every locale against English and fails when a key is missing or extra.
+3. Optional: copy `proxy/errors/502.en.html` to `502.<code>.html` and add one matcher plus one `respond` line to the invalid-host block and the 502 block in `proxy/Caddyfile`.
+
+The filename is the language code from `Accept-Language` and it is also handed to `Intl`, so `de.json` or `pt-BR.json` work without a code change. The service scans the directory at startup, which is what lets a translation platform add a language by opening a pull request.
 
 The files are plain JSON in the i18next v4 shape on purpose. Weblate imports that format directly, so a translation platform can open a pull request without anyone touching TypeScript. English is the source of truth: add a string there first, and the parity test will tell you which locales still need it.
 

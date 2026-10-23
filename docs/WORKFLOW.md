@@ -108,7 +108,7 @@ docker compose up -d --build
       i18n/
         en.json             # source strings, the shape every locale follows
         id.json             # Indonesian translation
-        index.ts            # resources, Lang, resolveLang, translator()
+        index.ts            # scans the files, Lang, resolveLang, translator()
       admin.ts              # dashboard shell (htmx + Alpine)
       fragments.ts          # invite and port fragments for htmx
       invite.ts             # CLI for passkey and access invites
@@ -185,7 +185,7 @@ Strings live in `auth/src/i18n/<code>.json` and are loaded by i18next at start. 
 
 Plurals use i18next's CLDR suffixes (`uses_one`, `uses_other`, and the rest of the categories when a language needs them). Dates use `Intl` with a tag from the locale registry, not from the translation file.
 
-Adding a language means adding one JSON file and one line in `auth/src/i18n/index.ts`. The Caddy error pages are separate: a new language there needs a copy of `proxy/errors/502.en.html` and two lines in the Caddyfile.
+Adding a language means adding one JSON file. The service scans `auth/src/i18n` at startup and uses the filename as both the `Accept-Language` code and the `Intl` locale. The Caddy error pages are separate: a new language there needs a copy of `proxy/errors/502.en.html` and two lines in the Caddyfile.
 
 ### Authenticated request to a port host
 
