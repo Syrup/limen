@@ -50,8 +50,8 @@ Passkey invites work the other way: one credential for one device, and that devi
 The Cloudflare side (tunnel, wildcard DNS, edge Worker) is a one time setup. Follow [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md) first.
 
 ```bash
-git clone <repo> limen
-cd limen
+git clone <repo> ~/limen
+cd ~/limen
 cp .env.example .env
 $EDITOR .env          # set LIMEN_DOMAIN and LIMEN_AUTH_HOST
 docker compose up -d --build

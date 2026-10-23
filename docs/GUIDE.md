@@ -92,7 +92,7 @@ The link works once. After the passkey is registered, the link stops working.
 From the command line, the same link can be created without the dashboard:
 
 ```bash
-cd ~/.config/limen
+cd ~/limen
 docker compose exec auth bun run invite.ts
 ```
 
@@ -111,14 +111,14 @@ Offsite backup uses [gloak](https://github.com/StackNadi/gloak), a separate tool
 One-time setup:
 
 ```bash
-cd ~/.config/limen/backup
+cd ~/limen/backup
 cp env.example env
 chmod 600 env
 # edit GLOAK_REMOTE, for example r2:limen-backup
 ./install.sh
 ```
 
-The installer links the systemd timer, creates the encryption key if needed, and initializes the repository. For the first week, run the backup manually and only enable the timer after a restore drill passes:
+The installer writes the systemd units with this checkout's path, creates the encryption key if needed, and initializes the repository. For the first week, run the backup manually and only enable the timer after a restore drill passes:
 
 ```bash
 systemctl --user enable --now gloak-backup.timer
@@ -136,7 +136,7 @@ rclone lsd r2:limen-backup
 Run manually:
 
 ```bash
-cd ~/.config/limen/backup
+cd ~/limen/backup
 ./backup.sh
 ./restore-drill.sh
 ```
@@ -160,7 +160,7 @@ Both commands must print a version. If Docker is missing, install it first.
 
 ### Step 2: put the files in place
 
-The project lives in `~/.config/limen`. Copy the whole folder, including `auth/data/auth.db` and `auth/data/invite-secret`. The database holds your passkeys, invites, sessions, blocked ports, and audit log. The secret keeps existing invite links valid. If you also use offsite backup, copy `backup/keys/` from your password manager, not from the broken machine.
+The examples assume the project is at `~/limen`. It can live anywhere, because the Compose mounts are relative. Copy the whole folder, including `auth/data/auth.db` and `auth/data/invite-secret`. The database holds your passkeys, invites, sessions, blocked ports, and audit log. The secret keeps existing invite links valid. If you also use offsite backup, copy `backup/keys/` from your password manager, not from the broken machine.
 
 If you are starting from a fresh clone instead of an existing install, create the deployment file first:
 
@@ -173,7 +173,7 @@ Then set `LIMEN_DOMAIN` and `LIMEN_AUTH_HOST` in `.env`. Without them the contai
 ### Step 3: start the containers
 
 ```bash
-cd ~/.config/limen
+cd ~/limen
 docker compose up -d --build
 ```
 
@@ -239,7 +239,7 @@ No output means the dev server is not running or is on a different port. Start i
 If the page has no port row, the auth service itself is down:
 
 ```bash
-cd ~/.config/limen
+cd ~/limen
 docker compose ps
 docker compose logs --tail=50 auth
 docker compose up -d auth
@@ -254,7 +254,7 @@ The address does not follow the pattern. Use `p` plus the port, for example `htt
 The link was used, revoked, or it expired. Create a new one from the dashboard, or with the command line:
 
 ```bash
-cd ~/.config/limen
+cd ~/limen
 docker compose exec auth bun run invite.ts
 ```
 
@@ -331,8 +331,8 @@ Passkeys are bound to the domain they were created on. Changing `example.com` to
 
 | Task | Command |
 |---|---|
-| Start everything | `cd ~/.config/limen && docker compose up -d` |
-| Stop everything | `cd ~/.config/limen && docker compose down` |
+| Start everything | `cd ~/limen && docker compose up -d` |
+| Stop everything | `cd ~/limen && docker compose down` |
 | Restart auth only | `docker compose restart auth` |
 | Rebuild auth after code change | `docker compose up -d --build auth` |
 | Rebuild dashboard assets | `make web-install && make assets` |

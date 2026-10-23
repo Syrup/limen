@@ -4,9 +4,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
+REPO_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
 mkdir -p "$UNIT_DIR"
 for unit in gloak-backup.service gloak-backup.timer gloak-backup-alert.service; do
-  ln -sfn "$SCRIPT_DIR/systemd/$unit" "$UNIT_DIR/$unit"
+  tmp="$(mktemp)"
+  sed "s|@LIMEN_HOME@|$REPO_DIR|g" "$SCRIPT_DIR/systemd/$unit" > "$tmp"
+  chmod 644 "$tmp"
+  mv "$tmp" "$UNIT_DIR/$unit"
 done
 systemctl --user daemon-reload
 

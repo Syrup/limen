@@ -101,20 +101,22 @@ no_check_bucket = true
 ```bash
 git clone https://github.com/StackNadi/gloak
 cd gloak
-mkdir -p ~/.config/limen/backup/bin
-go build -o ~/.config/limen/backup/bin/gloak .
+mkdir -p ~/limen/backup/bin
+go build -o ~/limen/backup/bin/gloak .
 ```
 
 Then:
 
 ```bash
-cd ~/.config/limen/backup
+cd ~/limen/backup
 cp env.example env && chmod 600 env
 # set GLOAK_REMOTE="r2:limen-backup"
 ./install.sh
 ./backup.sh
 ./restore-drill.sh
 ```
+
+The units are written with this checkout's path. Re-run `install.sh` if you move it.
 
 Enable the timer only after the drill passes, and copy `backup/keys/identity.txt` off the machine first. Without that key the snapshots cannot be opened.
 

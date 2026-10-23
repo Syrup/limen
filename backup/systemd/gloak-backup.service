@@ -6,8 +6,8 @@ OnFailure=gloak-backup-alert.service
 
 [Service]
 Type=oneshot
-EnvironmentFile=%h/.config/limen/backup/env
-ExecStart=%h/.config/limen/backup/backup.sh
+EnvironmentFile=@LIMEN_HOME@/backup/env
+ExecStart=@LIMEN_HOME@/backup/backup.sh
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7

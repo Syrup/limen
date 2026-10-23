@@ -1,6 +1,6 @@
 # Limen: private access gateway
 
-Technical reference for the setup in `~/.config/limen`. It covers the request path, the auth service internals, operational procedures, and the failure modes I have actually hit.
+Technical reference for the setup in this repository. It covers the request path, the auth service internals, operational procedures, and the failure modes I have actually hit.
 
 ## Goal
 
@@ -77,7 +77,7 @@ docker compose up -d --build
 ## Files
 
 ```
-~/.config/limen/
+limen/
   .gitignore                # keeps runtime state, secrets, and keys out of git
   .env.example              # template for deployment values
   .env                      # local values, gitignored
@@ -235,7 +235,7 @@ Access invite:
 The dashboard bundle is built by `web/`:
 
 ```bash
-cd ~/.config/limen/web
+cd ~/limen/web
 npm ci
 npm run build
 ```
@@ -427,7 +427,7 @@ What it does not protect against:
 ### Start, stop, restart
 
 ```bash
-cd ~/.config/limen
+cd ~/limen
 docker compose up -d              # start both
 docker compose up -d --build auth # rebuild auth after code changes
 docker compose restart proxy      # reload Caddyfile
@@ -481,7 +481,7 @@ docker compose up -d --build auth
 From the dashboard, create a `Passkey` invite. From the shell:
 
 ```bash
-cd ~/.config/limen
+cd ~/limen
 docker compose exec auth bun run invite.ts
 ```
 
@@ -506,7 +506,7 @@ Use the `Revoke` button in the dashboard. Revoking marks the invite dead and del
 List registered passkeys:
 
 ```bash
-cd ~/.config/limen
+cd ~/limen
 docker compose exec auth bun run passkey.ts list
 ```
 
@@ -542,14 +542,14 @@ Configuration lives in `backup/env` (mode 600, based on `backup/env.example`). R
 Setup:
 
 ```bash
-cd ~/.config/limen/backup
+cd ~/limen/backup
 cp env.example env
 chmod 600 env
 # edit GLOAK_REMOTE and rclone config
 ./install.sh
 ```
 
-`install.sh` links the systemd user units, generates the age key if missing, and initializes the repository. Enabling the timer is a separate decision; the units are linked but the timer stays off until `systemctl --user enable --now gloak-backup.timer`.
+`install.sh` writes the systemd user units with this checkout's path, generates the age key if missing, and initializes the repository. Re-run it if you move the directory. Enabling the timer is a separate decision; the units are in place but the timer stays off until `systemctl --user enable --now gloak-backup.timer`.
 
 For Cloudflare R2 with a bucket-scoped token, the rclone remote needs `no_check_bucket = true`. Without it, `HeadBucket` is denied and rclone tries `CreateBucket`, which fails with 403:
 
@@ -567,7 +567,7 @@ If you build from an older gloak checkout, initialize once with `--force` on a f
 Manual run:
 
 ```bash
-cd ~/.config/limen/backup
+cd ~/limen/backup
 ./backup.sh
 ./restore-drill.sh
 ./bin/gloak snapshots -R "$GLOAK_REMOTE"
