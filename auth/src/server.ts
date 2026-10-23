@@ -118,7 +118,7 @@ function originFromRequest(req: Request): string {
 
 function safeNext(next: unknown): string {
   if (typeof next !== "string" || next === "") return "/";
-  // Path internal, mis. /admin. Tolak //host dan backslash.
+  // Internal paths only, e.g. /admin. Reject //host and backslashes.
   if (next.startsWith("/") && !next.startsWith("//") && !next.includes("\\")) return next;
   try {
     const url = new URL(next);
@@ -511,13 +511,13 @@ export const server = Bun.serve({
       const inviteId = actionMatch[1] ?? "";
       if (actionMatch[2] === "revoke") {
         if (!revokeInvite(inviteId)) {
-          return html(renderInvitesFragment(lang), 404, { "HX-Trigger": toastHeader("not found", "error") });
+          return html(renderInvitesFragment(lang), 404, { "HX-Trigger": toastHeader(api.notFound, "error") });
         }
         auditRequest(req, "owner", "invite_revoke", inviteId);
         return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(UI[lang].admin.toastRevoked) });
       }
       if (!deleteInvite(inviteId)) {
-        return html(renderInvitesFragment(lang), 404, { "HX-Trigger": toastHeader("not found", "error") });
+        return html(renderInvitesFragment(lang), 404, { "HX-Trigger": toastHeader(api.notFound, "error") });
       }
       auditRequest(req, "owner", "invite_delete", inviteId);
       return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(UI[lang].admin.toastDeleted) });
