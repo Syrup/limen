@@ -58,6 +58,20 @@
 
 	log {
 		output stdout
-		format console
+		format filter {
+			wrap console
+			fields {
+				# Invite tokens live in the query string. Keep them out of the logs
+				# while still showing that a token was present.
+				request>uri query {
+					replace token REDACTED
+				}
+				# The register page links back to /login, so the token also shows
+				# up in the Referer header of that navigation.
+				request>headers>Referer query {
+					replace token REDACTED
+				}
+			}
+		}
 	}
 }
