@@ -1,6 +1,12 @@
-name = "keraki-host-filter"
+name = "limen-host-filter"
 main = "index.js"
 compatibility_date = "2026-10-23"
+
+# Edit both values for your deployment. The route pattern has to match the zone
+# in Cloudflare, and Cloudflare substitutes no variables there.
+[vars]
+LIMEN_DOMAIN = "example.com"
+LIMEN_AUTH_HOST = "auth.example.com"
 
 routes = [
   { pattern = "*.example.com/*", zone_name = "example.com" }

@@ -1,10 +1,10 @@
-# Worker: keraki host filter
+# Worker: edge host filter
 
 Blocks hostnames that do not match the port pattern before they reach the tunnel. Mirrors the Caddy rule in `../Caddyfile`.
 
 ## What it does
 
-Allowed hostnames are forwarded to the origin through `fetch(request)`:
+Allowed hostnames, read from `LIMEN_DOMAIN` and `LIMEN_AUTH_HOST` in `wrangler.toml`, are forwarded to the origin through `fetch(request)`:
 
 - `example.com`
 - `auth.example.com`
@@ -16,7 +16,15 @@ Caddy still validates the port independently. The Worker is a second fence, not 
 
 ## Deploy
 
-The Worker needs an API token with these zone permissions on `example.com`:
+Edit `[vars]` and the route pattern in `wrangler.toml` first. The template ships `example.com`, and deploying it unchanged makes every request to your zone return 404. That is the safe failure, but it is still an outage.
+
+Run the tests before deploying. They do not need Cloudflare credentials:
+
+```bash
+cd worker && bun test
+```
+
+The Worker needs an API token with these zone permissions on your zone:
 
 - Workers Scripts: Edit
 - Workers Routes: Edit
@@ -61,7 +69,7 @@ WebSocket passthrough matters for Vite HMR. After deploy, open the dev server th
 ## Rollback
 
 ```bash
-npx wrangler@latest delete --name keraki-host-filter
+npx wrangler@latest delete --name limen-host-filter
 ```
 
 Or remove the route in the dashboard. The site returns to Caddy-only filtering immediately.
