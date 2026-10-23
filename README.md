@@ -4,6 +4,16 @@ Private access to local dev servers through one domain, with passkeys instead of
 
 Start a server on port 4323, open `https://p4323.example.com`, and you land on it. Everything behind the domain needs a passkey. Invite links can grant temporary, port-scoped access without handing out a credential.
 
+## Why this exists
+
+I built this because showing a project to someone was always more work than the project itself.
+
+An SSH tunnel meant the other person needed a client, and I had to hand over a key or a password. Ngrok and the hosted tunnels dropped the client but wanted an account and a token first. Both added steps before anything was visible on their screen.
+
+What I wanted was boring: whatever port is already listening shows up at `p<port>.<domain>`, with no registration step. The dashboard lists what is up so I can block what I do not want exposed. A passkey is the only way in. When a friend or a client needs to see one app, I send a link with an expiry date.
+
+A domain is still required, which is the annoying part. Certificates and cookies need one, and wildcard DNS is what makes `p<port>` work. The tunnel runs on a free Cloudflare account.
+
 ## How it works
 
 ```
@@ -17,6 +27,16 @@ browser -> Cloudflare (edge host filter) -> tunnel -> Caddy -> auth gate -> your
 - A Cloudflare Worker rejects hostnames that do not follow the scheme before they reach the tunnel.
 
 Only the auth host and the port hosts answer. The SSH port, the proxy port, and the auth port cannot be blocked from the dashboard.
+
+## Temporary guest access
+
+The owner signs in with a passkey. The guest does not need one, or an account anywhere.
+
+From the dashboard, pick the ports, set how long the link lives (one minute up to twelve months), and send the URL. Opening it creates a session for those ports only. Everything else stays closed, and the session ends when the invite expires or you revoke it.
+
+Normally this is where a VPN or a user account would come in. Here, the guest never sees the dashboard, and revoking the link drops the sessions it created.
+
+Passkey invites work the other way: one credential for one device, and that device gets the owner's access to every port.
 
 ## Requirements
 
