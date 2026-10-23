@@ -197,7 +197,9 @@ The `blocked_ports` table stores the blocked list. `/verify` checks it before an
 | Challenge TTL | 5 minutes, in memory |
 | Credential storage | `id`, base64url `publicKey`, `counter`, `transports`, `createdAt` |
 
-The RP ID is the registrable domain, not the host, so one credential works on `auth.example.com` and on every `p<port>.example.com` origin. Origin checks accept `https://example.com` and any `https://*.example.com` host, and reject everything else. The hosted page always runs on `auth.example.com`, so the effective origin during ceremonies is that host.
+The RP ID is the registrable domain, not the host, so one credential works on `auth.example.com` and on every `p<port>.example.com` origin. Origin checks accept only `https://auth.example.com`, the host that serves the ceremonies and the dashboard. A sibling `p<port>.example.com` origin is rejected, so a proxied app cannot borrow the owner session for a WebAuthn or admin request.
+
+A signature counter that fails to increase on a credential which previously reported a non-zero counter fails the login and writes a `login_counter_regression` row to the audit table. Authenticators that always report 0 skip the check.
 
 ## Sessions and cookies
 
@@ -210,9 +212,11 @@ Both use `Domain=.example.com`, `Path=/`, `HttpOnly`, `Secure`, and `SameSite=La
 
 Keeping the guest cookie separate means redeeming an access link in the owner's browser does not downgrade or overwrite the owner session. `/verify` checks the owner session first.
 
+Opening the same access link again in a browser that already holds a guest session for that invite reuses the session instead of writing another row. Each invite keeps at most 20 guest sessions; older rows are dropped when a new one arrives.
+
 Logout deletes both session rows and clears both cookies. Revoking an access invite deletes the guest sessions issued from it. Removing a passkey deletes all owner sessions, so a lost device cannot keep using an old cookie.
 
-The domain scope is what makes one login cover every port. The trade-off is that any app served under `*.example.com` shares the cookie namespace. `HttpOnly` keeps JavaScript from reading the session values, but a compromised app on the same site can still issue requests to `auth.example.com` with the cookies attached. CORS stops it from reading the response. For a single-user homelab that is acceptable; for multi-tenant use it would not be.
+The domain scope is what makes one login cover every port. The trade-off is that any app served under `*.example.com` shares the cookie namespace. `HttpOnly` keeps JavaScript from reading the session values, but a compromised app on the same site can still send requests to `auth.example.com` with the cookies attached. Admin writes now check the origin exactly, so those requests are rejected instead of merely unreadable. For a single-user homelab that is acceptable; for multi-tenant use it would not be.
 
 ## Caddyfile behavior
 
@@ -330,9 +334,9 @@ What this setup does protect:
 - Invite tokens are derived from a secret with HMAC-SHA256. The database stores no usable token, and the secret file is mode 600.
 - Passkey invites are single-use. Access invites can be revoked, are capped at 365 days, and cannot be created forever.
 - Cookies are `HttpOnly` and `Secure`, so network sniffing and most XSS paths cannot lift a session.
-- Login endpoints allow 60 requests per minute per client IP, keyed on `CF-Connecting-IP`.
+- The API, `/access`, and admin POSTs allow 60 requests per minute per client IP, keyed on `CF-Connecting-IP`. `/verify` is exempt because every proxied request calls it.
 - `next` is validated against `https://*.example.com`, so the login page cannot be used as an open redirect.
-- Admin routes require the owner session and a same-site origin on POST.
+- Admin writes require the owner session and an `Origin` of exactly `https://auth.example.com`. A request that sends neither `Origin` nor `Sec-Fetch-Site` is treated as a CLI client and allowed.
 - The auth and proxy listeners bind loopback only. There is no LAN exposure.
 - Auth pages send `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `Referrer-Policy: no-referrer`. Inline scripts run only when their SHA-256 hash matches, so an injected script does not execute. The dashboard also allows `'unsafe-eval'` because Alpine and htmx compile expressions at runtime.
 - Attestation verification requires the user verification flag, so a bare presence tap is not enough.
@@ -345,7 +349,7 @@ What it does not protect against:
 - Malware on a device with an unlocked authenticator can use the passkey while the device is unlocked.
 - A stolen session cookie is valid until expiry; there is no per-session revocation list. Sessions live in SQLite, so deleting rows or removing a passkey is how you cut them short.
 - Revoking an access invite does not invalidate sessions already issued; they end at their own expiry.
-- The audit table records logins, invite changes, port changes, and access redemptions, but nothing reads it yet beyond manual SQL.
+- The audit table records logins, invite changes, port changes, and access redemptions, but nothing reads it yet beyond manual SQL. Rows older than 90 days are pruned every ten minutes.
 - The app behind a port is trusted. It shares the cookie namespace and can initiate same-site requests.
 - `ADMIN_DEV_OPEN=1` disables the owner check. It is inert when `NODE_ENV=production`, which the image sets.
 
@@ -548,7 +552,7 @@ Run these after any change.
 | No CDN import | `curl -s https://auth.example.com/login \| grep -c esm.sh` | `0` |
 | Security headers | `curl -sD - -o /dev/null https://auth.example.com/login \| grep -i x-frame-options` | `x-frame-options: DENY` |
 | Malformed cookie | `curl -s -o /dev/null -w "%{http_code}" -H 'Cookie: ag_session=%' https://auth.example.com/login` | `200` |
-| Unit tests | `cd auth && bun test` | `16 pass, 0 fail` |
+| Unit tests | `cd auth && bun test` | `21 pass, 0 fail` |
 | Containers healthy | `docker compose ps` | both `healthy` |
 | Gate redirect | `curl -s -o /dev/null -w "%{http_code} %{redirect_url}" https://p4323.example.com/` | `302` to `https://auth.example.com/login?next=...` |
 | Invalid host | `curl -s -o /dev/null -w "%{http_code}" https://asalan.example.com/` | `404` |
@@ -596,7 +600,9 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 
 - One user account. Multi-user support would need a user store and per-user credentials.
 - No passkey management page, no naming, no last-used timestamps.
-- No session list or per-session revocation. Restarting auth is the blunt instrument.
+- No session list or per-session revocation in the dashboard. Deleting rows from the `sessions` table is the blunt instrument.
+- `/verify` has no rate limit because it runs on every request behind a port host. A flood there is bounded only by Cloudflare in front of it.
+- The counter check only helps when the authenticator increments its signature counter.
 - Sessions persist in SQLite; WebAuthn challenges remain in memory, so a restart during a ceremony means retrying login.
 - SQLite has one writer. At this traffic level that is fine, but it rules out multiple auth replicas without moving to Postgres.
 - The dispatcher only serves HTTP. TCP services such as databases need separate tunnel rules.
