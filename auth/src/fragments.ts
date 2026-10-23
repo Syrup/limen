@@ -1,4 +1,4 @@
-import { UI, type Lang } from "./ui.ts";
+import { translator, type Lang } from "./i18n/index.ts";
 import {
   loadInvites,
   inviteState,
@@ -28,27 +28,27 @@ function inviteUrl(invite: Invite): string {
 }
 
 export function renderInvitesFragment(lang: Lang): string {
-  const c = UI[lang].admin;
+  const t = translator(lang);
   const locale = lang === "en" ? "en-US" : "id-ID";
   const invites = loadInvites().slice().sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
   if (invites.length === 0) {
-    return `<div class="rounded-lg border border-dashed border-line px-6 py-8 text-center text-xs text-faint">${c.empty}</div>`;
+    return `<div class="rounded-lg border border-dashed border-line px-6 py-8 text-center text-xs text-faint">${t("admin.empty")}</div>`;
   }
 
   const statusLabel: Record<string, string> = {
-    active: c.statusActive,
-    expired: c.statusExpired,
-    revoked: c.statusRevoked,
-    used: c.statusUsed,
+    active: t("admin.statusActive"),
+    expired: t("admin.statusExpired"),
+    revoked: t("admin.statusRevoked"),
+    used: t("admin.statusUsed"),
   };
 
   const cards = invites.map((invite) => {
     const state = inviteState(invite);
     const url = inviteUrl(invite);
-    const type = invite.type === "access" ? c.typeAccessShort : c.typePasskeyShort;
-    const scope = invite.scope === "all" ? c.scopeAllShort : invite.scope.map(p => `p${p}`).join(", ");
-    const uses = invite.maxUses === null ? `${invite.uses} ${c.usesUnit}` : `${invite.uses}/${invite.maxUses}`;
+    const type = invite.type === "access" ? t("admin.typeAccessShort") : t("admin.typePasskeyShort");
+    const scope = invite.scope === "all" ? t("admin.scopeAllShort") : invite.scope.map(p => `p${p}`).join(", ");
+    const uses = invite.maxUses === null ? t("admin.uses", { count: invite.uses }) : `${invite.uses}/${invite.maxUses}`;
     const expires = new Date(invite.expiresAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: TZ });
     const label = invite.label || "-";
     const canRevoke = state === "active";
@@ -65,7 +65,7 @@ export function renderInvitesFragment(lang: Lang): string {
         <div class="flex flex-wrap gap-1.5">
           <button type="button" data-url="${esc(url)}"
                   class="rounded-md border border-line px-2 py-1 text-[11.5px] text-muted transition-colors hover:border-line-strong hover:text-ink"
-                  @click="navigator.clipboard.writeText($el.dataset.url).catch(() => {}); $dispatch('toast', { message: D.toastCopied, kind: 'ok' })">${c.copy}</button>
+                  @click="navigator.clipboard.writeText($el.dataset.url).catch(() => {}); $dispatch('toast', { message: D.toastCopied, kind: 'ok' })">${t("admin.copy")}</button>
           ${canRevoke ? `<button type="button" data-url="/admin/invites/${invite.id}/revoke"
                   class="rounded-md border border-line px-2 py-1 text-[11.5px] text-muted transition-colors hover:border-danger/40 hover:text-danger"
                   x-data="{ armed: false, go() { if (!this.armed) { this.armed = true; setTimeout(() => { this.armed = false; }, 3000); return; } htmx.ajax('POST', $el.dataset.url, { target: '#invites', swap: 'innerHTML' }); } }"
@@ -77,10 +77,10 @@ export function renderInvitesFragment(lang: Lang): string {
         </div>
       </div>
       <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[11.5px] sm:grid-cols-4">
-        <div><dt class="text-muted">${c.thType}</dt><dd class="mt-0.5">${esc(type)}</dd></div>
-        <div><dt class="text-muted">${c.thScope}</dt><dd class="mt-0.5">${esc(scope)}</dd></div>
-        <div><dt class="text-muted">${c.thExpires}</dt><dd class="mt-0.5">${esc(expires)}</dd></div>
-        <div><dt class="text-muted">${c.thUses}</dt><dd class="mt-0.5">${esc(uses)}</dd></div>
+        <div><dt class="text-muted">${t("admin.thType")}</dt><dd class="mt-0.5">${esc(type)}</dd></div>
+        <div><dt class="text-muted">${t("admin.thScope")}</dt><dd class="mt-0.5">${esc(scope)}</dd></div>
+        <div><dt class="text-muted">${t("admin.thExpires")}</dt><dd class="mt-0.5">${esc(expires)}</dd></div>
+        <div><dt class="text-muted">${t("admin.thUses")}</dt><dd class="mt-0.5">${esc(uses)}</dd></div>
       </dl>
     </article>`;
   }).join("");
@@ -89,7 +89,7 @@ export function renderInvitesFragment(lang: Lang): string {
 }
 
 export function renderPortsFragment(lang: Lang): string {
-  const c = UI[lang].admin;
+  const t = translator(lang);
   const blocked = loadBlockedPorts();
   const listening = new Set(listeningPorts());
   const ports = [...new Set([...listening, ...blocked])].sort((a, b) => a - b);
@@ -101,10 +101,10 @@ export function renderPortsFragment(lang: Lang): string {
   const rows = ports.map((port) => {
     const isSystem = SYSTEM_PORTS.has(port);
     const allowed = !blocked.has(port);
-    const meta = `${listening.has(port) ? c.listening : c.notListening}${isSystem ? " · " + c.system : ""}`;
+    const meta = `${listening.has(port) ? t("admin.listening") : t("admin.notListening")}${isSystem ? " · " + t("admin.system") : ""}`;
     const badge = isSystem
-      ? `<span class="inline-flex h-5 items-center rounded-full border border-line-strong px-2 text-[11px] text-faint">${c.system}</span>`
-      : `<span class="inline-flex h-5 items-center rounded-full border px-2 text-[11px] ${allowed ? "border-mint/40 bg-mint/10 text-mint" : "border-danger/40 bg-danger/10 text-danger"}">${allowed ? c.allowed : c.blockedLabel}</span>`;
+      ? `<span class="inline-flex h-5 items-center rounded-full border border-line-strong px-2 text-[11px] text-faint">${t("admin.system")}</span>`
+      : `<span class="inline-flex h-5 items-center rounded-full border px-2 text-[11px] ${allowed ? "border-mint/40 bg-mint/10 text-mint" : "border-danger/40 bg-danger/10 text-danger"}">${allowed ? t("admin.allowed") : t("admin.blockedLabel")}</span>`;
     const toggle = isSystem
       ? ""
       : `<button type="button" role="switch" aria-checked="${allowed}" aria-label="p${port}"

@@ -37,8 +37,6 @@ import {
   type Session,
 } from "./store.ts";
 import {
-  UI,
-  resolveLang,
   renderLogin,
   renderRegister,
   renderSignedIn,
@@ -46,8 +44,8 @@ import {
   renderAccessGranted,
   renderPortBlocked,
   renderPortDenied,
-  type Lang,
 } from "./ui.ts";
+import { resolveLang, translator, type Lang } from "./i18n/index.ts";
 import { renderAdmin } from "./admin.ts";
 import { renderInvitesFragment, renderPortsFragment } from "./fragments.ts";
 import {
@@ -338,7 +336,7 @@ export const server = Bun.serve({
     const url = new URL(req.url);
     const path = url.pathname;
     const lang = resolveLang(req);
-    const api = UI[lang].api;
+    const t = translator(lang);
 
     if (path.startsWith("/assets/")) return serveAsset(path);
 
@@ -350,8 +348,8 @@ export const server = Bun.serve({
       (path.startsWith("/admin/") && req.method === "POST");
 
     if (sensitive && rateLimited(req)) {
-      if (path.startsWith("/api/")) return json({ error: api.rateLimited }, 429);
-      return new Response(api.rateLimited, {
+      if (path.startsWith("/api/")) return json({ error: t("api.rateLimited") }, 429);
+      return new Response(t("api.rateLimited"), {
         status: 429,
         headers: { "content-type": "text/plain; charset=utf-8", ...BASE_HEADERS },
       });
@@ -463,7 +461,7 @@ export const server = Bun.serve({
     if (path.startsWith("/admin/") && req.method === "POST") {
       if (!isOwner(req)) return new Response("Not found", { status: 404 });
       if (!adminOriginOk(req)) {
-        return html(renderInvitesFragment(lang), 403, { "HX-Trigger": toastHeader(api.originDenied, "error") });
+        return html(renderInvitesFragment(lang), 403, { "HX-Trigger": toastHeader(t("api.originDenied"), "error") });
       }
     }
 
@@ -474,12 +472,12 @@ export const server = Bun.serve({
       const unit = String(body.unit) as Unit;
 
       if (!UNITS.includes(unit)) {
-        return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(api.invalidDuration, "error") });
+        return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(t("api.invalidDuration"), "error") });
       }
 
       const ms = durationMs(amount, unit);
       if (!Number.isInteger(amount) || amount < 1 || ms < MIN_DURATION_MS || ms > MAX_DURATION_MS) {
-        return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(api.invalidDuration, "error") });
+        return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(t("api.invalidDuration"), "error") });
       }
 
       let scope: "all" | number[] = "all";
@@ -490,7 +488,7 @@ export const server = Bun.serve({
           .map(Number);
         const unique = [...new Set(ports)];
         if (unique.length === 0 || unique.some(p => !Number.isInteger(p) || p < 1 || p > 65535)) {
-          return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(api.invalidScope, "error") });
+          return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(t("api.invalidScope"), "error") });
         }
         scope = unique.sort((a, b) => a - b);
       }
@@ -503,7 +501,7 @@ export const server = Bun.serve({
       });
       auditRequest(req, "owner", "invite_create", created.id);
 
-      return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(UI[lang].admin.toastCreated) });
+      return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(t("admin.toastCreated")) });
     }
 
     const actionMatch = path.match(/^\/admin\/invites\/([A-Za-z0-9_-]+)\/(revoke|delete)$/);
@@ -511,26 +509,26 @@ export const server = Bun.serve({
       const inviteId = actionMatch[1] ?? "";
       if (actionMatch[2] === "revoke") {
         if (!revokeInvite(inviteId)) {
-          return html(renderInvitesFragment(lang), 404, { "HX-Trigger": toastHeader(api.notFound, "error") });
+          return html(renderInvitesFragment(lang), 404, { "HX-Trigger": toastHeader(t("api.notFound"), "error") });
         }
         auditRequest(req, "owner", "invite_revoke", inviteId);
-        return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(UI[lang].admin.toastRevoked) });
+        return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(t("admin.toastRevoked")) });
       }
       if (!deleteInvite(inviteId)) {
-        return html(renderInvitesFragment(lang), 404, { "HX-Trigger": toastHeader(api.notFound, "error") });
+        return html(renderInvitesFragment(lang), 404, { "HX-Trigger": toastHeader(t("api.notFound"), "error") });
       }
       auditRequest(req, "owner", "invite_delete", inviteId);
-      return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(UI[lang].admin.toastDeleted) });
+      return html(renderInvitesFragment(lang), 200, { "HX-Trigger": toastHeader(t("admin.toastDeleted")) });
     }
 
     if (path === "/admin/ports" && req.method === "POST") {
       const body = await readBody(req);
       const port = Number(body.port);
       if (!Number.isInteger(port) || port < 1 || port > 65535) {
-        return html(renderPortsFragment(lang), 200, { "HX-Trigger": toastHeader(api.invalidPort, "error") });
+        return html(renderPortsFragment(lang), 200, { "HX-Trigger": toastHeader(t("api.invalidPort"), "error") });
       }
       if (SYSTEM_PORTS.has(port)) {
-        return html(renderPortsFragment(lang), 200, { "HX-Trigger": toastHeader(api.systemPort, "error") });
+        return html(renderPortsFragment(lang), 200, { "HX-Trigger": toastHeader(t("api.systemPort"), "error") });
       }
 
       const wantBlocked = body.blocked === true || body.blocked === "true";
@@ -538,7 +536,7 @@ export const server = Bun.serve({
       auditRequest(req, "owner", wantBlocked ? "port_block" : "port_allow", String(port));
 
       return html(renderPortsFragment(lang), 200, {
-        "HX-Trigger": toastHeader(wantBlocked ? UI[lang].admin.toastPortOff : UI[lang].admin.toastPortOn),
+        "HX-Trigger": toastHeader(wantBlocked ? t("admin.toastPortOff") : t("admin.toastPortOn")),
       });
     }
 
@@ -546,7 +544,7 @@ export const server = Bun.serve({
     // --- passkey login ---
     if (path === "/api/webauthn/login/options" && req.method === "POST") {
       const creds = loadCreds();
-      if (creds.length === 0) return json({ error: api.noPasskey }, 400);
+      if (creds.length === 0) return json({ error: t("api.noPasskey") }, 400);
 
       const options = await generateAuthenticationOptions({
         rpID: RP_ID,
@@ -563,15 +561,15 @@ export const server = Bun.serve({
       const body = await req.json() as any;
       const challenge = challenges.get(body.challengeId);
       if (!challenge || challenge.type !== "auth" || challenge.expires < Date.now()) {
-        return json({ error: api.challengeInvalid }, 400);
+        return json({ error: t("api.challengeInvalid") }, 400);
       }
       challenges.delete(body.challengeId);
 
       const cred = creds.find(c => c.id === body.response?.id);
-      if (!cred) return json({ error: api.credNotFound }, 400);
+      if (!cred) return json({ error: t("api.credNotFound") }, 400);
 
       const origin = originFromRequest(req);
-      if (!isAllowedOrigin(origin)) return json({ error: api.originDenied }, 400);
+      if (!isAllowedOrigin(origin)) return json({ error: t("api.originDenied") }, 400);
 
       try {
         const verification = await verifyAuthenticationResponse({
@@ -587,7 +585,7 @@ export const server = Bun.serve({
           },
           requireUserVerification: true,
         });
-        if (!verification.verified) return json({ error: api.verifyFailed }, 401);
+        if (!verification.verified) return json({ error: t("api.verifyFailed") }, 401);
 
         // A counter that goes backwards means the credential may have been
         // cloned. Authenticators that never increment report 0, so only enforce
@@ -601,7 +599,7 @@ export const server = Bun.serve({
             ip: clientIp(req),
             ua: req.headers.get("user-agent") || undefined,
           });
-          return json({ error: api.verifyFailed }, 401);
+          return json({ error: t("api.verifyFailed") }, 401);
         }
 
         updateCredentialCounter(cred.id, nextCounter);
@@ -619,7 +617,7 @@ export const server = Bun.serve({
       const creds = loadCreds();
       const invite = findByToken(url.searchParams.get("token") || "");
       if (!invite || invite.type !== "passkey" || inviteState(invite) !== "active") {
-        return json({ error: api.inviteInvalid }, 403);
+        return json({ error: t("api.inviteInvalid") }, 403);
       }
 
       const options = await generateRegistrationOptions({
@@ -640,17 +638,17 @@ export const server = Bun.serve({
       const body = await req.json() as any;
       const challenge = challenges.get(body.challengeId);
       if (!challenge || challenge.type !== "reg" || challenge.expires < Date.now()) {
-        return json({ error: api.challengeInvalid }, 400);
+        return json({ error: t("api.challengeInvalid") }, 400);
       }
       challenges.delete(body.challengeId);
 
       const claim = claimPasskeyInvite(body.token || "");
-      if (!claim) return json({ error: api.inviteInvalid }, 403);
+      if (!claim) return json({ error: t("api.inviteInvalid") }, 403);
 
       const origin = originFromRequest(req);
       if (!isAllowedOrigin(origin)) {
         releasePasskeyClaim(claim.invite.id, claim.claimId);
-        return json({ error: api.originDenied }, 400);
+        return json({ error: t("api.originDenied") }, 400);
       }
 
       try {
@@ -663,7 +661,7 @@ export const server = Bun.serve({
         });
         if (!verification.verified || !verification.registrationInfo) {
           releasePasskeyClaim(claim.invite.id, claim.claimId);
-          return json({ error: api.verifyFailed }, 400);
+          return json({ error: t("api.verifyFailed") }, 400);
         }
         const { credential } = verification.registrationInfo;
         addCredential({

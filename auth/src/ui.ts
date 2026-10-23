@@ -1,345 +1,5 @@
 import { DOMAIN, TZ, portHost } from "./config.ts";
-
-export type Lang = "id" | "en";
-export const UI = {
-  id: {
-    htmlLang: "id",
-    titles: {
-      login: "Masuk - Limen",
-      register: "Daftarkan passkey - Limen",
-      signedIn: "Sudah masuk - Limen",
-      invalidInvite: "Tautan undangan tidak valid - Limen",
-      granted: "Akses aktif - Limen",
-      blocked: "Port tidak tersedia - Limen",
-      denied: "Port di luar akses - Limen",
-      admin: "Dashboard - Limen",
-    },
-    login: {
-      heading: "Masuk",
-      lead: "Gunakan passkey di perangkat ini untuk melanjutkan. Tidak ada kata sandi yang perlu diisi.",
-      target: "Tujuan",
-      button: "Masuk dengan passkey",
-      note1: "Sesi berlaku 24 jam sejak login.",
-      note2: "Belum punya passkey? Minta tautan undangan ke pemilik server.",
-    },
-    register: {
-      heading: "Daftarkan passkey",
-      lead: "Tautan ini hanya bisa dipakai sekali. Setelah passkey terdaftar, tautan langsung tidak berlaku.",
-      button: "Daftarkan passkey",
-      note1: "Gunakan perangkat yang ingin kamu beri akses. Passkey disimpan di perangkat, bukan di server.",
-      back: "Kembali ke halaman masuk",
-    },
-    signedIn: {
-      heading: "Sudah masuk",
-      lead: "Sesi aktif di browser ini. Kamu bisa menutup tab atau keluar sekarang.",
-      button: "Keluar",
-    },
-    invalidInvite: {
-      heading: "Tautan undangan tidak valid",
-      lead: "Tautan sudah dipakai, dicabut, atau kedaluwarsa. Minta tautan baru ke pemilik server.",
-      back: "Kembali ke halaman masuk",
-    },
-    granted: {
-      heading: "Akses aktif",
-      lead: "Sesi tamu sudah dibuat di browser ini. Kamu bisa membuka port yang tercantum sampai masa akses berakhir.",
-      until: "Berlaku sampai",
-      scopeAll: "Semua port",
-      scopeSome: "Port yang bisa dibuka",
-      button: "Keluar",
-    },
-    blocked: {
-      heading: "Port ini tidak tersedia",
-      lead: "Port ini tidak diforward saat ini. Hubungi orang yang memberi tautan kalau kamu butuh akses.",
-    },
-    denied: {
-      heading: "Port ini di luar aksesmu",
-      lead: "Akses sementara ini hanya berlaku untuk port tertentu. Minta tautan baru kalau perlu port lain.",
-      button: "Keluar",
-    },
-    admin: {
-      title: "Dashboard",
-      lead: "Kelola akses sementara, passkey, dan port yang diforward.",
-      logout: "Keluar",
-      createHeading: "Buat invite",
-      typeAccess: "Akses sementara",
-      typePasskey: "Passkey",
-      typeAccessHelp: "Tautan memberi akses sementara ke port yang dipilih. Bisa dipakai berkali-kali sampai dicabut atau kedaluwarsa.",
-      typePasskeyHelp: "Tautan untuk mendaftarkan passkey baru bagi akun pemilik. Sekali pakai.",
-      label: "Label",
-      labelPlaceholder: "Misal: tim desain",
-      duration: "Durasi",
-      unit: "Satuan",
-      units: { minutes: "Menit", hours: "Jam", days: "Hari", weeks: "Minggu", months: "Bulan" },
-      scope: "Cakupan port",
-      scopeAll: "Semua port",
-      scopeList: "Port tertentu",
-      portsPlaceholder: "4322, 4323",
-      create: "Buat tautan",
-      maxHint: "Maksimum 12 bulan. Tidak ada opsi selamanya.",
-      portsHeading: "Port",
-      portsLead: "Matikan port yang tidak ingin diforward.",
-      portInput: "Port",
-      block: "Blokir",
-      system: "Sistem",
-      listening: "Aktif",
-      notListening: "Tidak aktif",
-      allowed: "Diizinkan",
-      blockedLabel: "Diblokir",
-      linksHeading: "Tautan",
-      empty: "Belum ada tautan. Buat satu dari panel di atas.",
-      thLabel: "Label",
-      thType: "Tipe",
-      thScope: "Cakupan",
-      thExpires: "Berlaku",
-      thUses: "Dipakai",
-      thStatus: "Status",
-      thActions: "Aksi",
-      typeAccessShort: "Akses",
-      typePasskeyShort: "Passkey",
-      scopeAllShort: "Semua port",
-      statusActive: "Aktif",
-      statusExpired: "Kedaluwarsa",
-      statusRevoked: "Dicabut",
-      statusUsed: "Terpakai",
-      copy: "Salin",
-      copied: "Tersalin",
-      revoke: "Cabut",
-      revokeConfirm: "Yakin?",
-      remove: "Hapus",
-      removeConfirm: "Hapus?",
-      usesUnit: "kali",
-      never: "Tidak ada",
-      toastCreated: "Tautan dibuat.",
-      toastCopied: "Tautan disalin.",
-      toastRevoked: "Tautan dicabut.",
-      toastDeleted: "Tautan dihapus.",
-      toastPortOn: "Port diizinkan kembali.",
-      toastPortOff: "Port diblokir.",
-      errLoad: "Gagal memuat data.",
-      errCreate: "Gagal membuat tautan.",
-      errPorts: "Daftar port tidak valid.",
-      errDuration: "Durasi harus antara 1 menit dan 12 bulan.",
-      errPort: "Port tidak valid.",
-      errSystem: "Port sistem tidak bisa dimatikan.",
-      remainingDays: "hari",
-      remainingHours: "jam",
-      remainingMinutes: "menit",
-      expired: "Kedaluwarsa",
-    },
-    client: {
-      preparing: "Menyiapkan permintaan...",
-      waiting: "Menunggu konfirmasi perangkat...",
-      verifying: "Memverifikasi...",
-      success: "Berhasil. Mengalihkan...",
-      registered: "Passkey terdaftar. Mengalihkan ke halaman masuk...",
-      unsupported: "Browser ini tidak mendukung passkey.",
-      lib: "Pustaka passkey gagal dimuat. Muat ulang halaman ini.",
-      canceled: "Permintaan dibatalkan atau waktu habis. Coba lagi.",
-      security: "Alamat ini tidak cocok dengan passkey yang terdaftar.",
-      already: "Passkey ini sudah terdaftar di perangkat.",
-      network: "Tidak bisa menghubungi server. Periksa koneksi lalu coba lagi.",
-      generic: "Terjadi kesalahan. Coba lagi.",
-      rejected: "Server menolak permintaan.",
-      invalidLink: "Tautan undangan tidak berlaku.",
-      verifyFailed: "Verifikasi gagal.",
-    },
-    api: {
-      rateLimited: "Terlalu banyak percobaan. Coba lagi sebentar.",
-      inviteInvalid: "Tautan undangan tidak valid atau kedaluwarsa.",
-      challengeInvalid: "Sesi verifikasi tidak valid atau kedaluwarsa. Coba lagi.",
-      originDenied: "Alamat asal tidak diizinkan.",
-      verifyFailed: "Verifikasi gagal.",
-      noPasskey: "Belum ada passkey terdaftar.",
-      credNotFound: "Passkey tidak dikenali.",
-      invalidDuration: "Durasi harus antara 1 menit dan 12 bulan.",
-      invalidScope: "Cakupan port tidak valid.",
-      invalidPort: "Port tidak valid.",
-      notFound: "Tidak ditemukan.",
-      systemPort: "Port sistem tidak bisa dimatikan.",
-    },
-  },
-  en: {
-    htmlLang: "en-US",
-    titles: {
-      login: "Sign in - Limen",
-      register: "Register passkey - Limen",
-      signedIn: "Signed in - Limen",
-      invalidInvite: "Invalid invite link - Limen",
-      granted: "Access granted - Limen",
-      blocked: "Port unavailable - Limen",
-      denied: "Port outside your access - Limen",
-      admin: "Dashboard - Limen",
-    },
-    login: {
-      heading: "Sign in",
-      lead: "Use the passkey on this device to continue. There is no password to enter.",
-      target: "Destination",
-      button: "Sign in with passkey",
-      note1: "Sessions last 24 hours from sign-in.",
-      note2: "No passkey yet? Ask the server owner for an invite link.",
-    },
-    register: {
-      heading: "Register a passkey",
-      lead: "This link works once. After the passkey is registered, the link stops working.",
-      button: "Register passkey",
-      note1: "Use the device you want to grant access to. The passkey stays on the device, not on the server.",
-      back: "Back to sign in",
-    },
-    signedIn: {
-      heading: "Signed in",
-      lead: "This browser has an active session. You can close the tab or sign out now.",
-      button: "Sign out",
-    },
-    invalidInvite: {
-      heading: "Invite link is invalid",
-      lead: "The link was used, revoked, or has expired. Ask the server owner for a new one.",
-      back: "Back to sign in",
-    },
-    granted: {
-      heading: "Access granted",
-      lead: "A guest session is active in this browser. Open the listed ports until the access period ends.",
-      until: "Valid until",
-      scopeAll: "All ports",
-      scopeSome: "Ports you can open",
-      button: "Sign out",
-    },
-    blocked: {
-      heading: "This port is unavailable",
-      lead: "This port is not being forwarded right now. Contact the person who gave you the link if you need access.",
-    },
-    denied: {
-      heading: "This port is outside your access",
-      lead: "This temporary access only covers specific ports. Ask for a new link if you need another port.",
-      button: "Sign out",
-    },
-    admin: {
-      title: "Dashboard",
-      lead: "Manage temporary access, passkeys, and forwarded ports.",
-      logout: "Sign out",
-      createHeading: "Create invite",
-      typeAccess: "Temporary access",
-      typePasskey: "Passkey",
-      typeAccessHelp: "The link grants temporary access to the chosen ports. It can be reused until revoked or expired.",
-      typePasskeyHelp: "The link registers a new passkey for the owner account. Single use.",
-      label: "Label",
-      labelPlaceholder: "For example: design team",
-      duration: "Duration",
-      unit: "Unit",
-      units: { minutes: "Minutes", hours: "Hours", days: "Days", weeks: "Weeks", months: "Months" },
-      scope: "Port scope",
-      scopeAll: "All ports",
-      scopeList: "Specific ports",
-      portsPlaceholder: "4322, 4323",
-      create: "Create link",
-      maxHint: "Maximum 12 months. There is no forever option.",
-      portsHeading: "Ports",
-      portsLead: "Turn off ports that should not be forwarded.",
-      portInput: "Port",
-      block: "Block",
-      system: "System",
-      listening: "Listening",
-      notListening: "Not listening",
-      allowed: "Allowed",
-      blockedLabel: "Blocked",
-      linksHeading: "Links",
-      empty: "No links yet. Create one from the panel above.",
-      thLabel: "Label",
-      thType: "Type",
-      thScope: "Scope",
-      thExpires: "Expires",
-      thUses: "Uses",
-      thStatus: "Status",
-      thActions: "Actions",
-      typeAccessShort: "Access",
-      typePasskeyShort: "Passkey",
-      scopeAllShort: "All ports",
-      statusActive: "Active",
-      statusExpired: "Expired",
-      statusRevoked: "Revoked",
-      statusUsed: "Used",
-      copy: "Copy",
-      copied: "Copied",
-      revoke: "Revoke",
-      revokeConfirm: "Sure?",
-      remove: "Delete",
-      removeConfirm: "Delete?",
-      usesUnit: "times",
-      never: "None",
-      toastCreated: "Link created.",
-      toastCopied: "Link copied.",
-      toastRevoked: "Link revoked.",
-      toastDeleted: "Link deleted.",
-      toastPortOn: "Port allowed again.",
-      toastPortOff: "Port blocked.",
-      errLoad: "Could not load data.",
-      errCreate: "Could not create the link.",
-      errPorts: "The port list is invalid.",
-      errDuration: "Duration must be between 1 minute and 12 months.",
-      errPort: "Invalid port.",
-      errSystem: "System ports cannot be disabled.",
-      remainingDays: "days",
-      remainingHours: "hours",
-      remainingMinutes: "minutes",
-      expired: "Expired",
-    },
-    client: {
-      preparing: "Preparing request...",
-      waiting: "Waiting for device confirmation...",
-      verifying: "Verifying...",
-      success: "Success. Redirecting...",
-      registered: "Passkey registered. Redirecting to sign in...",
-      unsupported: "This browser does not support passkeys.",
-      lib: "The passkey library failed to load. Reload this page.",
-      canceled: "The request was cancelled or timed out. Try again.",
-      security: "This address does not match the registered passkey.",
-      already: "This passkey is already registered on the device.",
-      network: "Cannot reach the server. Check your connection and try again.",
-      generic: "Something went wrong. Try again.",
-      rejected: "The server rejected the request.",
-      invalidLink: "The invite link is not valid.",
-      verifyFailed: "Verification failed.",
-    },
-    api: {
-      rateLimited: "Too many attempts. Try again shortly.",
-      inviteInvalid: "The invite link is invalid or has expired.",
-      challengeInvalid: "The verification session is invalid or has expired. Try again.",
-      originDenied: "The request origin is not allowed.",
-      verifyFailed: "Verification failed.",
-      noPasskey: "No passkey is registered yet.",
-      credNotFound: "Passkey not recognised.",
-      invalidDuration: "Duration must be between 1 minute and 12 months.",
-      invalidScope: "The port scope is invalid.",
-      invalidPort: "Invalid port.",
-      notFound: "Not found.",
-      systemPort: "System ports cannot be disabled.",
-    },
-  },
-} as const;
-
-export type Dict = (typeof UI)[Lang];
-
-/** Pilih bahasa dari Accept-Language. Inggris hanya jika diminta eksplisit. */
-export function resolveLang(req: Request): Lang {
-  const header = req.headers.get("accept-language") || "";
-  const entries = header
-    .split(",")
-    .map((part, index) => {
-      const [rawTag = "", ...params] = part.trim().split(";");
-      const tag = rawTag.toLowerCase();
-      const qParam = params.map(p => p.trim()).find(p => p.startsWith("q="));
-      const q = qParam ? Number(qParam.slice(2)) : 1;
-      return { tag, q: Number.isFinite(q) ? q : 0, index };
-    })
-    .filter(entry => entry.tag !== "");
-
-  entries.sort((a, b) => b.q - a.q || a.index - b.index);
-
-  for (const entry of entries) {
-    if (entry.tag === "id" || entry.tag.startsWith("id-")) return "id";
-    if (entry.tag === "en" || entry.tag.startsWith("en-")) return "en";
-  }
-  return "en";
-}
+import { HTML_LANG, INTL_LOCALE, translator, type Lang } from "./i18n/index.ts";
 
 const STYLES = `
 :root{
@@ -439,7 +99,7 @@ export const MARK = `<span class="mark" aria-hidden="true"><svg viewBox="0 0 24 
 
 export function page(lang: Lang, title: string, main: string, script = ""): string {
   return `<!doctype html>
-<html lang="${UI[lang].htmlLang}">
+<html lang="${HTML_LANG[lang]}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -462,9 +122,30 @@ ${script ? `<script type="module">${script}</script>` : ""}
 </html>`;
 }
 
+function clientStrings(lang: Lang) {
+  const t = translator(lang);
+  return {
+    preparing: t("client.preparing"),
+    waiting: t("client.waiting"),
+    verifying: t("client.verifying"),
+    success: t("client.success"),
+    registered: t("client.registered"),
+    unsupported: t("client.unsupported"),
+    lib: t("client.lib"),
+    canceled: t("client.canceled"),
+    security: t("client.security"),
+    already: t("client.already"),
+    network: t("client.network"),
+    generic: t("client.generic"),
+    rejected: t("client.rejected"),
+    invalidLink: t("client.invalidLink"),
+    verifyFailed: t("client.verifyFailed"),
+  };
+}
+
 function loginScript(lang: Lang): string {
   return `
-const T = ${JSON.stringify(UI[lang].client)};
+const T = ${JSON.stringify(clientStrings(lang))};
 const btn = document.getElementById("btn");
 const status = document.getElementById("status");
 const target = document.getElementById("target");
@@ -533,7 +214,7 @@ if (!window.PublicKeyCredential) {
 
 function registerScript(lang: Lang): string {
   return `
-const T = ${JSON.stringify(UI[lang].client)};
+const T = ${JSON.stringify(clientStrings(lang))};
 const btn = document.getElementById("btn");
 const status = document.getElementById("status");
 const token = new URLSearchParams(location.search).get("token") || "";
@@ -599,89 +280,89 @@ if (!window.PublicKeyCredential) {
 }
 
 export function renderLogin(lang: Lang): string {
-  const c = UI[lang];
-  return page(lang, c.titles.login, `
-<h1>${c.login.heading}</h1>
-<p class="lead">${c.login.lead}</p>
-<div class="target"><span>${c.login.target}</span><code id="target">${DOMAIN}</code></div>
-<button id="btn" type="button">${c.login.button}</button>
+  const t = translator(lang);
+  return page(lang, t("titles.login"), `
+<h1>${t("login.heading")}</h1>
+<p class="lead">${t("login.lead")}</p>
+<div class="target"><span>${t("login.target")}</span><code id="target">${DOMAIN}</code></div>
+<button id="btn" type="button">${t("login.button")}</button>
 <div class="status" id="status" role="status"></div>
 <footer class="foot">
-  <p>${c.login.note1}</p>
-  <p>${c.login.note2}</p>
+  <p>${t("login.note1")}</p>
+  <p>${t("login.note2")}</p>
 </footer>
 `, loginScript(lang));
 }
 
 export function renderRegister(lang: Lang): string {
-  const c = UI[lang];
-  return page(lang, c.titles.register, `
-<h1>${c.register.heading}</h1>
-<p class="lead">${c.register.lead}</p>
-<button id="btn" type="button">${c.register.button}</button>
+  const t = translator(lang);
+  return page(lang, t("titles.register"), `
+<h1>${t("register.heading")}</h1>
+<p class="lead">${t("register.lead")}</p>
+<button id="btn" type="button">${t("register.button")}</button>
 <div class="status" id="status" role="status"></div>
 <footer class="foot">
-  <p>${c.register.note1}</p>
-  <p><a href="/login">${c.register.back}</a></p>
+  <p>${t("register.note1")}</p>
+  <p><a href="/login">${t("register.back")}</a></p>
 </footer>
 `, registerScript(lang));
 }
 
 export function renderSignedIn(lang: Lang): string {
-  const c = UI[lang];
-  return page(lang, c.titles.signedIn, `
-<h1>${c.signedIn.heading}</h1>
-<p class="lead">${c.signedIn.lead}</p>
-<a class="button-link" href="/logout">${c.signedIn.button}</a>
+  const t = translator(lang);
+  return page(lang, t("titles.signedIn"), `
+<h1>${t("signedIn.heading")}</h1>
+<p class="lead">${t("signedIn.lead")}</p>
+<a class="button-link" href="/logout">${t("signedIn.button")}</a>
 `);
 }
 
 export function renderInviteInvalid(lang: Lang): string {
-  const c = UI[lang];
-  return page(lang, c.titles.invalidInvite, `
-<h1>${c.invalidInvite.heading}</h1>
-<p class="lead">${c.invalidInvite.lead}</p>
-<footer class="foot"><p><a href="/login">${c.invalidInvite.back}</a></p></footer>
+  const t = translator(lang);
+  return page(lang, t("titles.invalidInvite"), `
+<h1>${t("invalidInvite.heading")}</h1>
+<p class="lead">${t("invalidInvite.lead")}</p>
+<footer class="foot"><p><a href="/login">${t("invalidInvite.back")}</a></p></footer>
 `);
 }
 
 export function renderAccessGranted(lang: Lang, scope: "all" | number[], expiresAt: string): string {
-  const c = UI[lang];
-  const until = new Date(expiresAt).toLocaleString(lang === "en" ? "en-US" : "id-ID", {
+  const t = translator(lang);
+  const until = new Date(expiresAt).toLocaleString(INTL_LOCALE[lang], {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: TZ,
   });
   const ports = scope === "all"
-    ? `<p class="lead">${c.granted.scopeAll}</p>`
+    ? `<p class="lead">${t("granted.scopeAll")}</p>`
     : `<div class="scope-list">${scope.map(p => `<a href="https://${portHost(p)}/">p${p}</a>`).join("")}</div>`;
-  return page(lang, c.titles.granted, `
-<h1>${c.granted.heading}</h1>
-<p class="lead">${c.granted.lead}</p>
-<div class="target"><span>${c.granted.until}</span><code>${until}</code></div>
+  return page(lang, t("titles.granted"), `
+<h1>${t("granted.heading")}</h1>
+<p class="lead">${t("granted.lead")}</p>
+<div class="target"><span>${t("granted.until")}</span><code>${until}</code></div>
 ${ports}
-<a class="button-link" href="/logout">${c.granted.button}</a>
+<a class="button-link" href="/logout">${t("granted.button")}</a>
 `);
 }
 
 export function renderPortBlocked(lang: Lang, port: number): string {
-  const c = UI[lang];
-  return page(lang, c.titles.blocked, `
-<h1>${c.blocked.heading}</h1>
-<p class="lead">${c.blocked.lead}</p>
+  const t = translator(lang);
+  return page(lang, t("titles.blocked"), `
+<h1>${t("blocked.heading")}</h1>
+<p class="lead">${t("blocked.lead")}</p>
 <div class="target"><span>Port</span><code>${port}</code></div>
 `);
 }
 
 export function renderPortDenied(lang: Lang, port: number, scope: number[]): string {
-  const c = UI[lang];
+  const t = translator(lang);
   const list = scope.map(p => `<a href="https://${portHost(p)}/">p${p}</a>`).join("");
-  return page(lang, c.titles.denied, `
-<h1>${c.denied.heading}</h1>
-<p class="lead">${c.denied.lead}</p>
+  return page(lang, t("titles.denied"), `
+<h1>${t("denied.heading")}</h1>
+<p class="lead">${t("denied.lead")}</p>
 <div class="target"><span>Port</span><code>${port}</code></div>
 ${list ? `<div class="scope-list">${list}</div>` : ""}
-<a class="button-link" href="/logout">${c.denied.button}</a>
+<a class="button-link" href="/logout">${t("denied.button")}</a>
 `);
 }
 
