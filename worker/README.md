@@ -1,6 +1,6 @@
 # Worker: edge host filter
 
-Blocks hostnames that do not match the port pattern before they reach the tunnel. Mirrors the Caddy rule in `../Caddyfile`.
+Blocks hostnames that do not match the port pattern before they reach the tunnel. Mirrors the Caddy rule in `../proxy/Caddyfile`.
 
 ## What it does
 

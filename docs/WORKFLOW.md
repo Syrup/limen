@@ -72,7 +72,7 @@ docker compose up -d --build
 | `LIMEN_MAX_COOKIE_AGE_DAYS` | `400` | Upper bound for the guest cookie. |
 | `LIMEN_UID` / `LIMEN_GID` | `1000` | Ownership of `auth/data`. |
 
-`auth/config.ts` reads these names. The domain and auth host are required: without them the service exits with code 78 instead of guessing, and Compose refuses to start. The Caddyfile uses the same variables.
+`auth/src/config.ts` reads these names. The domain and auth host are required: without them the service exits with code 78 instead of guessing, and Compose refuses to start. The Caddyfile uses the same variables.
 
 ## Files
 
@@ -81,29 +81,39 @@ docker compose up -d --build
   .gitignore                # keeps runtime state, secrets, and keys out of git
   .env.example              # template for deployment values
   .env                      # local values, gitignored
+  .editorconfig             # indentation and line ending rules
+  Makefile                  # shortcuts for the common tasks
   README.md                 # what it is, quick start, where to read next
+  CONTRIBUTING.md           # setup, tests, and what a change should include
   LICENSE                   # MIT
   docker-compose.yml        # proxy + auth services
-  Caddyfile                 # dispatcher rules, mounted read-only
-  GUIDE.md                  # non-technical guide
-  WORKFLOW.md               # this file
+  docs/
+    GUIDE.md                # day to day guide, no internals
+    WORKFLOW.md             # this file
+  proxy/
+    Caddyfile               # dispatcher rules, mounted read-only
+    errors/
+      502.html              # Indonesian error page, served by Caddy
+      502.en.html           # English error page
   auth/
     Dockerfile              # oven/bun:1-slim, production install, bundles the WebAuthn library
     .dockerignore           # keeps data/ and node_modules out of the build context
     package.json
     bun.lock
     tsconfig.json
-    server.ts               # HTTP routes, sessions, WebAuthn, enforcement
-    store.ts                # invites (HMAC), passkeys, ports, signing secret
-    ui.ts                   # server-rendered auth pages and language strings
-    admin.ts                # dashboard shell (htmx + Alpine)
-    fragments.ts            # invite and port fragments for htmx
-    invite.ts               # CLI for passkey and access invites
-    passkey.ts              # CLI to list and remove registered passkeys
-    config.ts               # every deployment value, read from the environment
-    healthcheck.ts          # container health probe against /health
-    server.test.ts          # HTTP tests against a temporary database
-    store.test.ts           # invite, claim, session, and port tests
+    src/
+      server.ts             # HTTP routes, sessions, WebAuthn, enforcement
+      store.ts              # invites (HMAC), passkeys, ports, signing secret
+      ui.ts                 # server-rendered auth pages and language strings
+      admin.ts              # dashboard shell (htmx + Alpine)
+      fragments.ts          # invite and port fragments for htmx
+      invite.ts             # CLI for passkey and access invites
+      passkey.ts            # CLI to list and remove registered passkeys
+      config.ts             # every deployment value, read from the environment
+      healthcheck.ts        # container health probe against /health
+    test/
+      server.test.ts        # HTTP tests against a temporary database
+      store.test.ts         # invite, claim, session, and port tests
     assets/
       app.css               # built by Tailwind, do not edit by hand
       fonts.css             # Satoshi @font-face
@@ -116,7 +126,8 @@ docker compose up -d --build
       legacy/               # JSON files moved here after the one-time import
   admin-ui/
     input.css               # Tailwind entry and theme tokens
-    package.json            # build script
+    package.json            # build script, output goes to auth/assets/app.css
+    package-lock.json       # pinned Tailwind version
   backup/
     bin/gloak               # local build of gloak, not committed (see backup/env)
     snapshot.ts             # VACUUM INTO plus integrity check
@@ -130,10 +141,11 @@ docker compose up -d --build
   worker/
     wrangler.toml           # name, entry, route *.example.com/*
     index.js                # host allowlist, 404 at the edge
+    index.test.js           # allowlist and fail-closed tests
     README.md               # deploy, verify, rollback
-  errors/
-    502.html                # Indonesian error page, served by Caddy
-    502.en.html             # English error page
+  .github/workflows/
+    ci.yml                  # runs both test suites on push and pull request
+```
 ```
 
 The `auth/data` directory is bind-mounted into the container, so it survives rebuilds.
@@ -332,11 +344,11 @@ The Caddy regex stays in place as an independent check. If the Worker is deleted
 
 Why not WAF custom rules: regex operators require a Business plan or higher. Workers are free up to 100,000 requests per day.
 
-Deployment and rollback live in `worker/README.md`.
+Deployment and rollback live in `../worker/README.md`.
 
 ## Error pages
 
-When the dispatcher cannot reach an app, Caddy produces a 502. Cloudflare replaces origin 502 bodies with its own branded error page, and custom error pages are not available on the Free plan. The proxy therefore converts this failure to 503, a status Cloudflare passes through unchanged, and serves a page from `errors/`.
+When the dispatcher cannot reach an app, Caddy produces a 502. Cloudflare replaces origin 502 bodies with its own branded error page, and custom error pages are not available on the Free plan. The proxy therefore converts this failure to 503, a status Cloudflare passes through unchanged, and serves a page from `proxy/errors/`.
 
 ```caddyfile
 handle_errors {
@@ -549,7 +561,7 @@ Paths included in the backup:
 ```
 auth/data/auth.db
 auth/data/invite-secret
-Caddyfile
+proxy/Caddyfile
 docker-compose.yml
 ```
 
@@ -641,7 +653,7 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 | `1033` or `521`/`522` from Cloudflare | Tunnel disconnected | `systemctl --user status cloudflared` | Restart the unit, check outbound network |
 | TLS handshake failure | Two-level hostname, or wildcard record missing | `openssl s_client -connect <host>:443 -servername <host>` | Use one-level names, restore the CNAME |
 | 404 with body `Not found` | Worker rejected the host at the edge | `curl -sI https://<host>/ \| grep -i x-host-filter` shows `blocked` | Use `p<port>.example.com`, `auth.example.com`, or the apex |
-| `403 Blocked request. This host is not allowed.` | Someone removed `header_up Host localhost` | Caddyfile | Restore the line |
+| `403 Blocked request. This host is not allowed.` | Someone removed `header_up Host localhost` | `proxy/Caddyfile` | Restore the line |
 | Login button inert | Passkey bundle missing from the image, or an extension blocks WebAuthn | Console shows a failed `/assets/webauthn.js` request | `docker compose up -d --build auth`, then try a clean profile |
 | Auth loop after rebuild | Cookie rejected or clock skew | Browser devtools, `sessions` table | Clear site data, sign in again |
 | Credentials unreadable after migration | UID mismatch on bind mount | `ls -ln auth/data` | Fix ownership, or adjust `user:` in compose |

@@ -51,7 +51,7 @@ Open the printed link, approve the passkey prompt, then use the dashboard at `ht
 
 ## Configuration
 
-Everything that differs between installs lives in `.env`. The full table is in [WORKFLOW.md](WORKFLOW.md#configuration). Two values are required, and Compose refuses to start without them:
+Everything that differs between installs lives in `.env`. The full table is in [docs/WORKFLOW.md](docs/WORKFLOW.md#configuration). Two values are required, and Compose refuses to start without them:
 
 | Variable | Example |
 |---|---|
@@ -63,8 +63,8 @@ Missing values stop the auth service with exit code 78 instead of falling back t
 ## Tests
 
 ```bash
-cd auth && bun install && bun test   # 21 tests
-cd worker && bun test                # 4 tests
+make test        # auth and worker suites
+make typecheck   # tsc against auth/src
 ```
 
 Both suites use temporary state and never touch a running deployment.
@@ -75,13 +75,14 @@ Built for a single owner on one host. There is no multi-user store, no session l
 
 ## Docs
 
-- [GUIDE.md](GUIDE.md): day to day use, written for someone who just wants to open a dev server.
-- [WORKFLOW.md](WORKFLOW.md): request path, security properties, operations, backup and restore, failure modes.
+- [docs/GUIDE.md](docs/GUIDE.md): day to day use, written for someone who just wants to open a dev server.
+- [docs/WORKFLOW.md](docs/WORKFLOW.md): request path, security properties, operations, backup and restore, failure modes.
 - [worker/README.md](worker/README.md): deploying and rolling back the edge filter.
+- [CONTRIBUTING.md](CONTRIBUTING.md): setup, tests, layout, and what a change should include.
 
 ## Security
 
-The threat model, and the parts this does not protect against, are in [WORKFLOW.md](WORKFLOW.md#security-properties). The short version: passkeys are bound to the zone, session cookies are `HttpOnly` and scoped to the zone, invite tokens are HMAC-derived and redacted from logs, and the gate runs before the proxy contacts your app.
+The threat model, and the parts this does not protect against, are in [docs/WORKFLOW.md](docs/WORKFLOW.md#security-properties). The short version: passkeys are bound to the zone, session cookies are `HttpOnly` and scoped to the zone, invite tokens are HMAC-derived and redacted from logs, and the gate runs before the proxy contacts your app.
 
 ## License
 
