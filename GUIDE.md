@@ -298,7 +298,7 @@ Check the tunnel on the server:
 ```bash
 systemctl --user status cloudflared
 systemctl --user restart cloudflared
-cloudflared tunnel info homelab
+cloudflared tunnel info <tunnel-name>
 ```
 
 The `tunnel info` output should list active connections. If it lists none, the machine may be offline or the tunnel credentials are missing.

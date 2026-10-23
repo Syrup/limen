@@ -24,7 +24,7 @@ Cloudflare edge (Universal SSL, proxied wildcard DNS)
   |  allowed hosts pass through, everything else 404 at the edge
   |  encrypted tunnel (QUIC)
   v
-cloudflared (systemd --user, tunnel "homelab")
+cloudflared (systemd --user, tunnel "<name>")
   |  HTTP to 127.0.0.1:8088
   v
 Caddy container "limen" (network_mode: host, binds 127.0.0.1:8088)
@@ -223,7 +223,7 @@ The `blocked_ports` table stores the blocked list. `/verify` checks it before an
 | Setting | Value |
 |---|---|
 | Relying party ID | `example.com` |
-| Relying party name | `example.com homelab` |
+| Relying party name | `LIMEN_RP_NAME`, default `Limen` |
 | User name and display name | `LIMEN_OWNER_NAME` |
 | Attestation | `none` |
 | Resident key | `preferred` |
