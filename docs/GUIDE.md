@@ -75,7 +75,7 @@ Use this to give someone access for a limited time without giving them a passkey
 3. Choose `All ports` or list specific ports, for example `4322, 4323`.
 4. Create the link and send it to the person.
 
-When they open it, the server creates a guest session in their browser and shows the ports they can open. The link keeps working until it is revoked or expires, and the guest session ends when the invite does. Revoke it from the dashboard when it is no longer needed.
+When they open it, the server creates a guest session in their browser and shows the ports they can open. The link keeps working until it is revoked or expires. Revoking it also deletes the sessions it handed out, so access stops right away instead of running to the expiry date.
 
 Anyone who has the link can use it until then. Treat it like a temporary key, not a public URL.
 
