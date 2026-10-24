@@ -33,10 +33,7 @@ services:
     mem_limit: 64m
 
   auth:
-    build:
-      context: .
-      dockerfile: auth/Dockerfile
-    image: limen-core:latest
+    image: ghcr.io/syrup/limen:${LIMEN_IMAGE_TAG:-latest}
     container_name: limen-core
     restart: unless-stopped
     network_mode: host

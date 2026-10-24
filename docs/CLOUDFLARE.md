@@ -44,7 +44,8 @@ LIMEN_AUTH_HOST=auth.example.com
 Then:
 
 ```bash
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 curl -s https://auth.example.com/health
 docker compose exec auth bun run src/invite.ts
 ```

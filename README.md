@@ -67,7 +67,14 @@ git clone <repo> ~/limen
 cd ~/limen
 cp .env.example .env
 $EDITOR .env          # set LIMEN_DOMAIN and LIMEN_AUTH_HOST
-docker compose up -d --build
+docker compose pull
+docker compose up -d
+```
+
+The auth image comes from `ghcr.io/syrup/limen`. Set `LIMEN_IMAGE_TAG` in `.env` to pin a release instead of following `latest`. The proxy runs the upstream Caddy image. To build from source, add the build override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
 Check the service:
@@ -79,7 +86,7 @@ curl -s https://auth.example.com/health   # {"ok":true}
 With no passkey registered yet, create the first invite from the shell:
 
 ```bash
-docker compose exec auth bun run invite.ts
+docker compose exec auth bun run src/invite.ts
 ```
 
 Open the printed link, approve the passkey prompt, then use the dashboard at `https://auth.example.com/admin`.

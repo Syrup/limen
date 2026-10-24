@@ -93,7 +93,7 @@ From the command line, the same link can be created without the dashboard:
 
 ```bash
 cd ~/limen
-docker compose exec auth bun run invite.ts
+docker compose exec auth bun run src/invite.ts
 ```
 
 ## Turning ports off
@@ -174,7 +174,8 @@ Then set `LIMEN_DOMAIN` and `LIMEN_AUTH_HOST` in `.env`. Without them the contai
 
 ```bash
 cd ~/limen
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Wait about ten seconds. Two containers should be running:
@@ -200,7 +201,7 @@ If this fails, jump to the common errors section below.
 With no passkeys on the machine, you still need an invite. Create one:
 
 ```bash
-docker compose exec auth bun run invite.ts
+docker compose exec auth bun run src/invite.ts
 ```
 
 Open the printed link in your browser and approve the passkey prompt. After that, the link is dead and the account has one key.
@@ -255,13 +256,13 @@ The link was used, revoked, or it expired. Create a new one from the dashboard, 
 
 ```bash
 cd ~/limen
-docker compose exec auth bun run invite.ts
+docker compose exec auth bun run src/invite.ts
 ```
 
 For temporary access, add the type and scope:
 
 ```bash
-docker compose exec auth bun run invite.ts --type access --duration 2 --unit hours --scope 4322,4323
+docker compose exec auth bun run src/invite.ts --type access --duration 2 --unit hours --scope 4322,4323
 ```
 
 A passkey link works once. An access link keeps working until it is revoked or expires.
@@ -307,7 +308,7 @@ The `tunnel info` output should list active connections. If it lists none, the m
 
 ### Login page loads but the button does nothing
 
-The passkey library ships inside the container, so a blocked CDN cannot cause this. If the button still does nothing, open the browser console. A failed request for `/assets/webauthn.js` means the image was built without the bundle step, so rebuild with `docker compose up -d --build auth`. An extension that blocks WebAuthn usually fails quietly, so try a clean browser profile before rebuilding.
+The passkey library ships inside the container, so a blocked CDN cannot cause this. If the button still does nothing, open the browser console. A failed request for `/assets/webauthn.js` means the image was built without the bundle step, so rebuild from source with `make build`. An extension that blocks WebAuthn usually fails quietly, so try a clean browser profile before rebuilding.
 
 ### Session still active after a restart
 
@@ -331,17 +332,17 @@ Passkeys are bound to the domain they were created on. Changing `example.com` to
 
 | Task | Command |
 |---|---|
-| Start everything | `cd ~/limen && docker compose up -d` |
+| Start everything | `cd ~/limen && docker compose pull && docker compose up -d` |
 | Stop everything | `cd ~/limen && docker compose down` |
 | Restart auth only | `docker compose restart auth` |
-| Rebuild auth after code change | `docker compose up -d --build auth` |
+| Rebuild auth after code change | `make build` |
 | Rebuild dashboard assets | `make web-install && make assets` |
 | Show auth logs | `docker compose logs -f auth` |
 | Show proxy logs | `docker compose logs -f proxy` |
-| Create passkey link | `docker compose exec auth bun run invite.ts` |
-| Create access link | `docker compose exec auth bun run invite.ts --type access --duration 2 --unit hours --scope all` |
-| List passkeys | `docker compose exec auth bun run passkey.ts list` |
-| Remove a passkey | `docker compose exec auth bun run passkey.ts remove <id>` |
+| Create passkey link | `docker compose exec auth bun run src/invite.ts` |
+| Create access link | `docker compose exec auth bun run src/invite.ts --type access --duration 2 --unit hours --scope all` |
+| List passkeys | `docker compose exec auth bun run src/passkey.ts list` |
+| Remove a passkey | `docker compose exec auth bun run src/passkey.ts remove <id>` |
 | Run backup | `cd backup && ./backup.sh` |
 | Restore drill | `cd backup && ./restore-drill.sh` |
 | Dashboard | open `https://auth.example.com/admin` |

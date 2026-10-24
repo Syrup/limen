@@ -51,7 +51,8 @@ Every value that differs between installs lives in `.env`, which Compose reads a
 ```bash
 cp .env.example .env
 # edit the two required values, then start
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 | Variable | Default | What it controls |
@@ -86,7 +87,8 @@ limen/
   README.md                 # what it is, quick start, where to read next
   CONTRIBUTING.md           # setup, tests, and what a change should include
   LICENSE                   # MIT
-  docker-compose.yml        # proxy + auth services
+  docker-compose.yml        # proxy + auth services, auth pulled from ghcr.io
+  docker-compose.build.yml  # override that builds the auth image from source
   docs/
     GUIDE.md                # day to day guide, no internals
     CLOUDFLARE.md           # tunnel, DNS, Worker, and R2 setup
@@ -205,7 +207,7 @@ Two types share one store. Each invite has an `id`, a type, a label, a creation 
 
 Passkey invite:
 
-1. Operator creates it from the dashboard or with `docker compose exec auth bun run invite.ts`.
+1. Operator creates it from the dashboard or with `docker compose exec auth bun run src/invite.ts`.
 2. `GET /register?token=<token>` validates the signature, type, expiry, revocation, and use count.
 3. `POST /api/webauthn/register/options?token=<token>` returns creation options. Existing credentials go into `excludeCredentials`.
 4. The browser runs `startRegistration`, then posts the attestation to `/api/webauthn/register/verify` with the same token.
@@ -427,8 +429,9 @@ What it does not protect against:
 
 ```bash
 cd ~/limen
+docker compose pull               # fetch the image tagged LIMEN_IMAGE_TAG
 docker compose up -d              # start both
-docker compose up -d --build auth # rebuild auth after code changes
+make build                        # rebuild the auth image from source
 docker compose restart proxy      # reload Caddyfile
 docker compose down               # stop and remove containers
 docker compose ps                 # status
@@ -436,7 +439,24 @@ docker compose ps                 # status
 
 Caddy mounts the Caddyfile read-only, so a config edit needs `docker compose restart proxy`, not `up` alone.
 
-### Image pinning
+### Published image
+
+CI publishes `ghcr.io/syrup/limen` from `.github/workflows/publish.yml` on every push to `main` and on every tag that starts with `v`.
+
+- A push to `main` produces `latest` and `sha-<commit>`.
+- A tag `v1.2.3` adds `1.2.3` and `1.2`, and moves `latest` to that build.
+
+The image is `linux/amd64` only, which matches the digests pinned in `auth/Dockerfile`. Set `LIMEN_IMAGE_TAG` in `.env` to pin a release. The package must be public on GHCR for `docker compose pull` to work without a login.
+
+Building from source skips the registry entirely:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+That is what `make build` runs.
+
+### Base image pinning
 
 Both base images are pinned by digest, in `auth/Dockerfile` and `docker-compose.yml`. To move to a newer base, bump the tag and the digest together:
 
@@ -470,7 +490,7 @@ The dashboard stylesheet and the JS bundle come from `web/`, not from hand-writt
 
 ```bash
 make assets
-docker compose up -d --build auth
+make build
 ```
 
 `web/node_modules` stays out of the runtime image. The Dockerfile builds the bundle in a Node stage and copies only the output.
@@ -481,7 +501,7 @@ From the dashboard, create a `Passkey` invite. From the shell:
 
 ```bash
 cd ~/limen
-docker compose exec auth bun run invite.ts
+docker compose exec auth bun run src/invite.ts
 ```
 
 Open the printed URL on the target device. The default lifetime is 15 minutes and the link is single-use.
@@ -491,7 +511,7 @@ Open the printed URL on the target device. The default lifetime is 15 minutes an
 From the dashboard, create a `Temporary access` invite with a duration and a scope. From the shell:
 
 ```bash
-docker compose exec auth bun run invite.ts --type access --duration 2 --unit hours --scope 4322,4323
+docker compose exec auth bun run src/invite.ts --type access --duration 2 --unit hours --scope 4322,4323
 ```
 
 `--scope all` is the default. Durations are validated against 1 minute and 365 days.
@@ -506,13 +526,13 @@ List registered passkeys:
 
 ```bash
 cd ~/limen
-docker compose exec auth bun run passkey.ts list
+docker compose exec auth bun run src/passkey.ts list
 ```
 
 Remove one by id:
 
 ```bash
-docker compose exec auth bun run passkey.ts remove <id>
+docker compose exec auth bun run src/passkey.ts remove <id>
 ```
 
 Removing a passkey deletes every owner session, so all devices must sign in again with a remaining passkey. If you remove the last one, registration still requires a passkey invite, which cannot be created without an owner session. Create a spare passkey invite before removing the last credential.
@@ -598,15 +618,15 @@ Passkeys are bound to the RP ID, which is `LIMEN_DOMAIN`. Moving to another doma
 1. Set `LIMEN_DOMAIN` and `LIMEN_AUTH_HOST` in `.env`.
 2. Update the tunnel ingress and the wildcard DNS record to the new zone.
 3. Update `[vars]` and the route pattern in `worker/wrangler.toml`, then deploy the Worker.
-4. `docker compose up -d --build`.
-5. Remove every passkey with `bun run passkey.ts remove <id>` (or clear the `credentials` and `sessions` tables), then register fresh passkeys through an invite.
+4. `docker compose pull`, then `docker compose up -d`.
+5. Remove every passkey with `bun run src/passkey.ts remove <id>` (or clear the `credentials` and `sessions` tables), then register fresh passkeys through an invite.
 
 ### Migrate to another host
 
 1. Install Docker and the Cloudflare tunnel client.
 2. Copy the project folder including `.env`, `auth/data/auth.db`, `auth/data/invite-secret`, `backup/env`, `backup/keys/`, and `~/.cloudflared` credentials.
 3. Recreate the user systemd unit for cloudflared and the backup units.
-4. `docker compose up -d --build`.
+4. `docker compose pull`, then `docker compose up -d`.
 5. Confirm `cloudflared tunnel info <name>` shows connections.
 6. Keep DNS unchanged; it points at the tunnel, not the host.
 
@@ -640,7 +660,7 @@ Run these after any change.
 | Containers | `docker compose ps` | `limen` and `limen-core` up |
 | Tunnel | `systemctl --user is-active cloudflared` | `active` |
 | DNS | `dig +short acak.example.com @1.1.1.1` | two Cloudflare addresses |
-| Database | `docker compose exec auth bun run passkey.ts list` | one passkey, no error |
+| Database | `docker compose exec auth bun run src/passkey.ts list` | one passkey, no error |
 | Backup | `cd backup && ./backup.sh` | snapshot id, check, verify, prune all succeed |
 | Restore drill | `cd backup && ./restore-drill.sh` | `integrity: ok` and table counts |
 
@@ -661,14 +681,14 @@ The authenticated path needs a browser. A WebSocket upgrade check against the de
 | Passkey prompt missing | No platform authenticator or unsupported browser | Try another browser | Set a screen lock or use a security key |
 | `SecurityError` on ceremony | Origin or RP ID mismatch | Check the address bar | Access via `auth.example.com`, not an IP |
 | `NotAllowedError` | User cancelled, or timeout | Browser console | Retry, keep the tab focused |
-| `InvalidStateError` on registration | Credential already registered for this RP | `bun run passkey.ts list` | Expected; log in instead of registering |
+| `InvalidStateError` on registration | Credential already registered for this RP | `bun run src/passkey.ts list` | Expected; log in instead of registering |
 | `403` on register | Missing, used, revoked, or expired invite | Check the dashboard or the `invites` table | Create a new passkey invite |
 | `429` | Rate limit, 60 requests per minute per IP on `/api/*` | Auth logs | Wait 60 seconds |
 | `1033` or `521`/`522` from Cloudflare | Tunnel disconnected | `systemctl --user status cloudflared` | Restart the unit, check outbound network |
 | TLS handshake failure | Two-level hostname, or wildcard record missing | `openssl s_client -connect <host>:443 -servername <host>` | Use one-level names, restore the CNAME |
 | 404 with body `Not found` | Worker rejected the host at the edge | `curl -sI https://<host>/ \| grep -i x-host-filter` shows `blocked` | Use `p<port>.example.com`, `auth.example.com`, or the apex |
 | `403 Blocked request. This host is not allowed.` | Someone removed `header_up Host localhost` | `proxy/Caddyfile` | Restore the line |
-| Login button inert | Passkey bundle missing from the image, or an extension blocks WebAuthn | Console shows a failed `/assets/webauthn.js` request | `docker compose up -d --build auth`, then try a clean profile |
+| Login button inert | Passkey bundle missing from the image, or an extension blocks WebAuthn | Console shows a failed `/assets/webauthn.js` request | `make build`, then try a clean profile |
 | Auth loop after rebuild | Cookie rejected or clock skew | Browser devtools, `sessions` table | Clear site data, sign in again |
 | Credentials unreadable after migration | UID mismatch on bind mount | `ls -ln auth/data` | Fix ownership, or adjust `user:` in compose |
 

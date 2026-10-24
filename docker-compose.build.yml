@@ -1,0 +1,6 @@
+services:
+  auth:
+    build:
+      context: .
+      dockerfile: auth/Dockerfile
+    image: limen-core:latest

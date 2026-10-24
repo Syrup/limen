@@ -15,7 +15,7 @@ git clone <repo> limen
 cd limen
 cp .env.example .env
 $EDITOR .env          # set LIMEN_DOMAIN and LIMEN_AUTH_HOST
-docker compose up -d --build
+make build            # image from source, not from ghcr.io
 curl -s https://auth.<domain>/health
 ```
 

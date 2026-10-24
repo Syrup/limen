@@ -1,7 +1,11 @@
-.PHONY: up down logs test test-auth test-worker typecheck assets web-install invite backup restore-drill config
+.PHONY: up build down logs test test-auth test-worker typecheck assets web-install invite backup restore-drill config
 
 up:
-	docker compose up -d --build
+	docker compose pull
+	docker compose up -d
+
+build:
+	docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 
 down:
 	docker compose down
