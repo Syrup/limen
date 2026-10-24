@@ -4,6 +4,8 @@ Private access to local dev servers through one domain, with passkeys instead of
 
 Start a server on port 4323, open `https://p4323.example.com`, and you land on it. Everything behind the domain needs a passkey. Invite links can grant temporary, port-scoped access without handing out a credential.
 
+<img src="docs/assets/dashboard.png" alt="The Limen dashboard: create an access link, control which local ports are forwarded, and see every link with its scope and expiry." width="900">
+
 ## Why this exists
 
 I built this because showing a project to someone was always more work than the project itself.
