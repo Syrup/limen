@@ -45,6 +45,17 @@ Passkey invites work the other way: one credential for one device, and that devi
 - A browser with passkey support and a device with a screen lock.
 - [`gloak`](https://github.com/StackNadi/gloak) if you want offsite backups. It is a separate MIT tool in Go; build it from its own source and place the binary where `GLOAK_BIN` points.
 
+## Who this is not for
+
+Limen assumes you already own a domain on Cloudflare and are willing to run Docker on the host. If one of these is closer to what you need, use it instead:
+
+- Access from your own devices only: `tailscale serve` publishes a port to your tailnet in one command, with no domain.
+- A public URL with no login: Tailscale Funnel, or a Cloudflare Quick Tunnel.
+- Authentication without maintaining code: Cloudflare Access in front of the same tunnel, free for up to 50 users.
+- A self-hosted gateway with a web UI and SSO: Pangolin.
+
+One default to check before you install: blocked ports are opt-in. Every port that is listening answers on `p<port>.<domain>` once a passkey session exists, unless you block it from the dashboard. On a laptop that runs only dev servers, that is the point. On a host with a database or an admin panel on a well known port, block those ports first.
+
 ## Quick start
 
 The Cloudflare side (tunnel, wildcard DNS, edge Worker) is a one time setup. Follow [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md) first.
@@ -105,7 +116,16 @@ Built for a single owner on one host. There is no multi-user store, no session l
 
 ## Security
 
-The threat model, and the parts this does not protect against, are in [docs/WORKFLOW.md](docs/WORKFLOW.md#security-properties). TL;DR: passkeys are bound to the zone, session cookies are `HttpOnly` and scoped to the zone, invite tokens are HMAC-derived and redacted from logs, and the gate runs before the proxy contacts your app.
+Passkeys are bound to the zone, cookies are `HttpOnly`, invite tokens are HMAC-derived and redacted from logs, and the gate runs before the proxy contacts your app.
+
+- The owner is the only identity. There is no user store and no password to share or reset.
+- A guest session reaches only the ports listed in its invite, and nothing else.
+- Port checks happen inside the auth service, before Caddy contacts the upstream.
+- Whoever holds the Cloudflare account or the tunnel credentials can take over the hostnames.
+- A live invite link works for anyone who has it.
+- The app behind a port is trusted, because it shares the cookie namespace.
+
+The full list, including what this does not protect against, is in [docs/WORKFLOW.md](docs/WORKFLOW.md#security-properties).
 
 ## License
 

@@ -217,7 +217,7 @@ Access invite:
 2. `GET /access?token=<token>` validates it, consumes one use atomically, and creates a guest session in SQLite.
 3. The guest session is stored in the `ag_access` cookie with `expires` equal to the invite expiry and `scope` copied from the invite.
 4. The visitor is redirected to `next` when it is a port host inside the scope, to the single scoped port, or to `/access/granted`.
-5. The link remains usable until revoked or expired. Revoking does not delete sessions already issued; they end at their expiry. Restarting auth clears them early.
+5. The link stays usable until it is revoked or expires. Revoking deletes every guest session issued from that invite, so access stops at once. Sessions live in SQLite, so restarting the auth service does not clear them; they are removed on revoke, on delete, or when they expire.
 6. Durations are capped at 365 days, minimum 1 minute. There is no forever option.
 
 ### Dashboard
@@ -415,8 +415,8 @@ What it does not protect against:
 - Anyone who obtains a live access link can use it until it expires or is revoked. Treat the link as a secret.
 - Anyone who obtains a live passkey link can register a passkey. Treat it as a secret and keep its duration short.
 - Malware on a device with an unlocked authenticator can use the passkey while the device is unlocked.
-- A stolen session cookie is valid until expiry; there is no per-session revocation list. Sessions live in SQLite, so deleting rows or removing a passkey is how you cut them short.
-- Revoking an access invite does not invalidate sessions already issued; they end at their own expiry.
+- Owner sessions have no per-session revocation list. A stolen owner cookie stays valid until `LIMEN_OWNER_TTL_HOURS` runs out; removing the passkey deletes every owner session, and deleting the row in SQLite does the same for one.
+- A guest session dies when its invite is revoked or deleted, because both remove the session rows. Otherwise it lives as long as the invite.
 - The audit table records logins, invite changes, port changes, and access redemptions, but nothing reads it yet beyond manual SQL. Rows older than 90 days are pruned every ten minutes.
 - The app behind a port is trusted. It shares the cookie namespace and can initiate same-site requests.
 - `ADMIN_DEV_OPEN=1` disables the owner check. It is inert when `NODE_ENV=production`, which the image sets.
